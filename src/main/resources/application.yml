@@ -1,0 +1,5 @@
+server:
+    port: 88
+
+milton:
+  contextPath: /webdav

@@ -1,0 +1,108 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package io.milton.http.report;
+
+import io.milton.common.WritingException;
+import io.milton.http.*;
+import io.milton.http.Request.Method;
+import io.milton.http.entity.ByteArrayEntity;
+import io.milton.http.exceptions.BadRequestException;
+import io.milton.http.exceptions.ConflictException;
+import io.milton.http.exceptions.NotAuthorizedException;
+import io.milton.http.webdav.WebDavResponseHandler;
+import io.milton.resource.ReportableResource;
+import io.milton.resource.Resource;
+import org.jdom2.JDOMException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.logging.Level;
+
+/**
+ *
+ * @author alex
+ */
+public class ReportHandler implements ExistingEntityHandler {
+
+	private final Logger log = LoggerFactory.getLogger(ReportHandler.class);
+	private final WebDavResponseHandler responseHandler;
+	private final ResourceHandlerHelper resourceHandlerHelper;
+	private final Map<String, Report> reports;
+
+	public ReportHandler(WebDavResponseHandler responseHandler, ResourceHandlerHelper resourceHandlerHelper, Map<String, Report> reports) {
+		this.responseHandler = responseHandler;
+		this.resourceHandlerHelper = resourceHandlerHelper;
+		this.reports = reports;
+	}
+
+	@Override
+	public String[] getMethods() {
+		return new String[]{Method.REPORT.code};
+	}
+
+	@Override
+	public void process(HttpManager httpManager, Request request, Response response) throws ConflictException, NotAuthorizedException, BadRequestException {
+		resourceHandlerHelper.process(httpManager, request, response, this);
+	}
+
+	@Override
+	public void processResource(HttpManager manager, Request request, Response response, Resource r) throws NotAuthorizedException, ConflictException, BadRequestException {
+		resourceHandlerHelper.processResource(manager, request, response, r, this);
+	}
+
+	@Override
+	public void processExistingResource(HttpManager manager, Request request, Response response, Resource resource) throws NotAuthorizedException, BadRequestException, ConflictException {
+		try {
+			org.jdom2.input.SAXBuilder builder = new org.jdom2.input.SAXBuilder();
+			// Prevent possibily of malicious clients using remote the parser to load remote resources
+			builder.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+			builder.setExpandEntities(false);
+			org.jdom2.Document doc = builder.build(request.getInputStream());
+			String reportName = doc.getRootElement().getName();
+			Report r = reports.get(reportName);
+			if (r == null) {
+				log.error("report not known: " + reportName);
+				throw new BadRequestException(resource);
+			} else {
+				log.info("process report: " + reportName + " with : " + r.getClass());
+				String xml = r.process(request.getHostHeader(), request.getAbsolutePath(), resource, doc);
+				if(log.isTraceEnabled()) {
+					log.trace("Report XML:\n" + xml);
+				}
+				response.setStatus(Response.Status.SC_MULTI_STATUS);
+				response.setContentTypeHeader("text/xml");
+				response.setEntity(new ByteArrayEntity(xml.getBytes("UTF-8")));
+			}
+		} catch (JDOMException ex) {
+			java.util.logging.Logger.getLogger(ReportHandler.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (WritingException ex) {
+			throw new RuntimeException(ex);
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+    }
+
+	@Override
+	public boolean isCompatible(Resource res) {
+		return (res instanceof ReportableResource);
+	}
+}
