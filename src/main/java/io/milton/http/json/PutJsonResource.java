@@ -30,10 +30,6 @@ import io.milton.http.exceptions.BadRequestException;
 import io.milton.http.exceptions.ConflictException;
 import io.milton.http.exceptions.NotAuthorizedException;
 import io.milton.resource.*;
-import net.sf.json.JSON;
-import net.sf.json.JSONSerializer;
-import net.sf.json.JsonConfig;
-import net.sf.json.util.CycleDetectionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -199,28 +195,7 @@ public class PutJsonResource extends JsonResource implements PostableResource {
      */
     @Override
     public void sendContent(OutputStream out, Range range, Map<String, String> params, String contentType) throws IOException, NotAuthorizedException {
-        JsonConfig cfg = new JsonConfig();
-        cfg.setIgnoreTransientFields(true);
-        cfg.setCycleDetectionStrategy(CycleDetectionStrategy.LENIENT);
-        Writer writer = new PrintWriter(out);
-        if (errorMessage != null) {
-            Map map = new HashMap();
-            map.put("error", errorMessage);
-            JSON json = JSONSerializer.toJSON(map, cfg);
-            json.write(writer);
 
-        } else {
-            NewFile[] arr;
-            if (newFiles != null) {
-                arr = new NewFile[newFiles.size()];
-                newFiles.toArray(arr);
-            } else {
-                arr = new NewFile[0];
-            }
-            JSON json = JSONSerializer.toJSON(arr, cfg);
-            json.write(writer);
-        }
-        writer.flush();
     }
 
     @Override

@@ -32,10 +32,6 @@ import io.milton.http.webdav.WebDavProtocol;
 import io.milton.resource.CollectionResource;
 import io.milton.resource.PropFindableResource;
 import io.milton.resource.Resource;
-import net.sf.json.JSON;
-import net.sf.json.JSONSerializer;
-import net.sf.json.JsonConfig;
-import net.sf.json.util.CycleDetectionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,58 +60,7 @@ public class JsonPropFindHandler {
     }
 
     public void sendContent(PropFindableResource wrappedResource, String encodedUrl, OutputStream out, Range range, Map<String, String> params, String contentType) throws IOException, NotAuthorizedException, BadRequestException {
-        log.debug("sendContent: " + encodedUrl);
-        JsonConfig cfg = new JsonConfig();
-        cfg.setIgnoreTransientFields(true);
-        cfg.setCycleDetectionStrategy(CycleDetectionStrategy.LENIENT);
 
-        JSON json;
-        Writer writer = new PrintWriter(out);
-        String[] arr;
-        if (propertyBuilder == null) {
-            if (wrappedResource instanceof CollectionResource) {
-                List<? extends Resource> children = Optional.ofNullable(((CollectionResource) wrappedResource).getChildren()).orElse(List.of());
-                json = JSONSerializer.toJSON(toSimpleList(children), cfg);
-            } else {
-                json = JSONSerializer.toJSON(toSimple(wrappedResource), cfg);
-            }
-        } else {
-            // use propfind handler
-            String sFields = params.get("fields");
-            Set<QName> fields = new HashSet<>();
-            Map<QName, String> aliases = new HashMap<>();
-            if (sFields != null && sFields.length() > 0) {
-                arr = sFields.split(",");
-                for (String s : arr) {
-                    parseField(s, fields, aliases);
-                }
-            }
-
-            String sDepth = params.get("depth");
-            int depth = 1;
-            if (sDepth != null && sDepth.trim().length() > 0) {
-                depth = Integer.parseInt(sDepth);
-            }
-
-
-            String href = encodedUrl.replace("/_DAV/PROPFIND", "");
-            PropertiesRequest parseResult = new PropertiesRequest(toProperties(fields));
-            LogUtils.debug(log, "prop builder: ", propertyBuilder.getClass(), "href", href);
-            List<PropFindResponse> props;
-			try {
-				props = propertyBuilder.buildProperties(wrappedResource, depth, parseResult, href);
-			} catch (URISyntaxException ex) {
-				throw new RuntimeException("Requested url is not properly encoded: " + href, ex);
-			}
-
-            String where = params.get("where");
-            filterResults(props, where);
-
-            List<Map<String, Object>> list = helper.toMap(props, aliases);
-            json = JSONSerializer.toJSON(list, cfg);
-        }
-        json.write(writer);
-        writer.flush();
     }
 
 	private Set<Property> toProperties(Set<QName> set) {

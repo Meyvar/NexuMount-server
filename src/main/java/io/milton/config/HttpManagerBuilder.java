@@ -38,7 +38,6 @@ import io.milton.http.fs.SimpleSecurityManager;
 import io.milton.http.http11.*;
 import io.milton.http.http11.DefaultHttp11ResponseHandler.BUFFERING;
 import io.milton.http.http11.auth.*;
-import io.milton.http.http11.auth.LoginResponseHandler.LoginPageTypeHandler;
 import io.milton.http.json.JsonPropFindHandler;
 import io.milton.http.json.JsonPropPatchHandler;
 import io.milton.http.json.JsonResourceFactory;
@@ -168,8 +167,6 @@ public class HttpManagerBuilder {
     protected boolean webdavEnabled = true;
     protected MatchHelper matchHelper;
     protected PartialGetHelper partialGetHelper;
-    protected LoginResponseHandler loginResponseHandler;
-    protected LoginPageTypeHandler loginPageTypeHandler = new LoginResponseHandler.ContentTypeLoginPageTypeHandler();
     protected boolean enableExpectContinue = false;
     protected String controllerPackagesToScan;
     protected String controllerClassNames;
@@ -185,7 +182,6 @@ public class HttpManagerBuilder {
     private boolean useLongLivedCookies = true;
     private boolean enableQuota = false;
 
-    private OAuth2AuthenticationHandler oAuth2Handler;
 
     private boolean enableOAuth2 = false;
 
@@ -279,15 +275,6 @@ public class HttpManagerBuilder {
                     authenticationHandlers.add(digestHandler);
                 }
 
-                if (oAuth2Handler == null) {
-                    if (enableOAuth2) {
-                        oAuth2Handler = new OAuth2AuthenticationHandler(nonceProvider);
-                    }
-                }
-                if (oAuth2Handler != null) {
-                    authenticationHandlers.add(oAuth2Handler);
-                }
-
                 if (formAuthenticationHandler == null) {
                     if (enableFormAuth) {
                         formAuthenticationHandler = new FormAuthenticationHandler();
@@ -315,10 +302,6 @@ public class HttpManagerBuilder {
                             if (formAuthenticationHandler != null) {
                                 cookieDelegateHandlers.add(formAuthenticationHandler);
                                 authenticationHandlers.remove(formAuthenticationHandler);
-                            }
-                            if (oAuth2Handler != null) {
-                                cookieDelegateHandlers.add(oAuth2Handler);
-                                authenticationHandlers.remove(oAuth2Handler);
                             }
                         }
                         initCookieSigningKeys();
@@ -400,15 +383,6 @@ public class HttpManagerBuilder {
             compressingResponseHandler.setBuffering(buffering);
             outerWebdavResponseHandler = compressingResponseHandler;
             showLog("webdavResponseHandler", webdavResponseHandler);
-        }
-        if (enableFormAuth) {
-            log.info("form authentication is enabled, so wrap response handler with {}", LoginResponseHandler.class);
-            if (loginResponseHandler == null) {
-                loginResponseHandler = new LoginResponseHandler(outerWebdavResponseHandler, mainResourceFactory, loginPageTypeHandler);
-                loginResponseHandler.setExcludePaths(loginPageExcludePaths);
-                loginResponseHandler.setLoginPage(loginPage);
-                outerWebdavResponseHandler = loginResponseHandler;
-            }
         }
 
         initAnnotatedResourceFactory();
@@ -978,14 +952,6 @@ public class HttpManagerBuilder {
         this.basicHandler = basicHandler;
     }
 
-    public OAuth2AuthenticationHandler getoAuth2Handler() {
-        return oAuth2Handler;
-    }
-
-    public void setoAuth2Handler(OAuth2AuthenticationHandler oAuth2Handler) {
-        this.oAuth2Handler = oAuth2Handler;
-    }
-
     public CookieAuthenticationHandler getCookieAuthenticationHandler() {
         return cookieAuthenticationHandler;
     }
@@ -1008,14 +974,6 @@ public class HttpManagerBuilder {
 
     public void setDigestHandler(DigestAuthenticationHandler digestHandler) {
         this.digestHandler = digestHandler;
-    }
-
-    public OAuth2AuthenticationHandler getOAuth2Handler() {
-        return oAuth2Handler;
-    }
-
-    public void setOAuth2Handler(OAuth2AuthenticationHandler oAuth2Handler) {
-        this.oAuth2Handler = oAuth2Handler;
     }
 
     public boolean isEnableOAuth2() {
@@ -1227,22 +1185,6 @@ public class HttpManagerBuilder {
 
     public void setMultiNamespaceCustomPropertySourceEnabled(boolean multiNamespaceCustomPropertySourceEnabled) {
         this.multiNamespaceCustomPropertySourceEnabled = multiNamespaceCustomPropertySourceEnabled;
-    }
-
-    public LoginPageTypeHandler getLoginPageTypeHandler() {
-        return loginPageTypeHandler;
-    }
-
-    public void setLoginPageTypeHandler(LoginPageTypeHandler loginPageTypeHandler) {
-        this.loginPageTypeHandler = loginPageTypeHandler;
-    }
-
-    public LoginResponseHandler getLoginResponseHandler() {
-        return loginResponseHandler;
-    }
-
-    public void setLoginResponseHandler(LoginResponseHandler loginResponseHandler) {
-        this.loginResponseHandler = loginResponseHandler;
     }
 
     public List<InitListener> getListeners() {

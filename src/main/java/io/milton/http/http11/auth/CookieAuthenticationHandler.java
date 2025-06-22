@@ -132,7 +132,6 @@ public class CookieAuthenticationHandler implements AuthenticationHandler {
 						// this we disable form auth and reject the login, this will result in a Basic/Digest
 						// authentication challenge
 						if (delegateHandler instanceof FormAuthenticationHandler) {
-							LoginResponseHandler.setDisableHtmlResponse(request);
 							return null;
 						}
 					}

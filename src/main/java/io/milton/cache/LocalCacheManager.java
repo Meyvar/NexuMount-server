@@ -27,12 +27,4 @@ public class LocalCacheManager implements CacheManager {
                 .maximumSize(maximumWeightedCapacity)
                 .build().asMap();
     }
-
-	public int getMaximumWeightedCapacity() {
-		return maximumWeightedCapacity;
-	}
-
-	public void setMaximumWeightedCapacity(int maximumWeightedCapacity) {
-		this.maximumWeightedCapacity = maximumWeightedCapacity;
-	}
 }

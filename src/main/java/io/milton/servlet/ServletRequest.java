@@ -24,9 +24,6 @@ import io.milton.http.Response.ContentType;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.apache.commons.fileupload2.core.DiskFileItem;
-import org.apache.commons.fileupload2.core.DiskFileItemFactory;
-import org.apache.commons.fileupload2.jakarta.JakartaServletFileUpload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,52 +162,7 @@ public class ServletRequest extends AbstractRequest {
 
     @Override
     public void parseRequestParameters(Map<String, String> params, Map<String, FileItem> files) throws RequestParseException {
-        try {
-            if (isMultiPart()) {
-                log.trace("parseRequestParameters: isMultiPart");
-                DiskFileItemFactory factory = DiskFileItemFactory.builder().get();
-                JakartaServletFileUpload<DiskFileItem, DiskFileItemFactory> upload = new JakartaServletFileUpload<>(factory);
-                List<DiskFileItem> items = upload.parseRequest(request);
 
-                parseQueryString(params);
-
-                for (DiskFileItem item : items) {
-                    if (item.isFormField()) {
-                        params.put(item.getFieldName(), item.getString());
-                    } else {
-                        // See http://jira.ettrema.com:8080/browse/MIL-118 - ServletRequest#parseRequestParameters overwrites multiple file uploads when using input type="file" multiple="multiple"
-                        String itemKey = item.getFieldName();
-                        if (files.containsKey(itemKey)) {
-                            int count = 1;
-                            while (files.containsKey(itemKey + count)) {
-                                count++;
-                            }
-                            itemKey = itemKey + count;
-                        }
-                        files.put(itemKey, new FileItemWrapper(item));
-                    }
-                }
-            } else {
-                for (Enumeration en = request.getParameterNames(); en.hasMoreElements(); ) {
-                    String nm = (String) en.nextElement();
-                    String[] vals = request.getParameterValues(nm);
-                    if (vals.length == 1) {
-                        params.put(nm, vals[0]);
-                    } else {
-                        StringBuilder sb = new StringBuilder();
-                        for (String s : vals) {
-                            sb.append(s).append(",");
-                        }
-                        if (sb.length() > 0) {
-                            sb.deleteCharAt(sb.length() - 1); // remove last comma
-                        }
-                        params.put(nm, sb.toString());
-                    }
-                }
-            }
-        } catch (Throwable ex) {
-            throw new RequestParseException(ex.getMessage(), ex);
-        }
     }
 
     private void parseQueryString(Map<String, String> map) {

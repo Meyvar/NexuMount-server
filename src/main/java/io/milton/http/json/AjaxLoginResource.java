@@ -30,7 +30,6 @@ import io.milton.http.exceptions.NotAuthorizedException;
 import io.milton.resource.GetableResource;
 import io.milton.resource.PostableResource;
 import io.milton.resource.Resource;
-import net.sf.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,24 +49,7 @@ public class AjaxLoginResource extends JsonResource implements GetableResource, 
 
     @Override
     public void sendContent( OutputStream out, Range range, Map<String, String> params, String contentType ) throws IOException, NotAuthorizedException, BadRequestException {
-		JSONObject json = new JSONObject();
-		Request request = HttpManager.request();
-		Boolean loginResult = (Boolean) request.getAttributes().get("loginResult");
-		json.accumulate("loginResult", loginResult);
-		String userUrl = (String) request.getAttributes().get("userUrl");
-		if (userUrl != null) {
-			json.accumulate("userUrl", userUrl);
-		}
-		ByteArrayOutputStream bout = new ByteArrayOutputStream();
-		PrintWriter pw = new PrintWriter(bout);
-		json.write(pw);
-		pw.flush();
-		byte[] arr = bout.toByteArray();
-		try {
-			out.write(arr);
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
+
     }
 
     @Override

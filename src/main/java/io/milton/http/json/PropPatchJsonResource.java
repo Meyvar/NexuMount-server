@@ -32,10 +32,6 @@ import io.milton.http.webdav.PropFindResponse;
 import io.milton.http.webdav.PropFindResponse.NameAndError;
 import io.milton.resource.PostableResource;
 import io.milton.resource.Resource;
-import net.sf.json.JSON;
-import net.sf.json.JSONSerializer;
-import net.sf.json.JsonConfig;
-import net.sf.json.util.CycleDetectionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,29 +58,7 @@ public class PropPatchJsonResource extends JsonResource implements PostableResou
     }
 
     public void sendContent( OutputStream out, Range range, Map<String, String> params, String contentType ) throws IOException, NotAuthorizedException {
-        log.debug( "sendContent");
-        JsonConfig cfg = new JsonConfig();
-        cfg.setIgnoreTransientFields( true );
-        cfg.setCycleDetectionStrategy( CycleDetectionStrategy.LENIENT );
 
-        List<FieldError> errors = new ArrayList<>();
-        if( resp != null && resp.getErrorProperties() != null ) {
-            log.debug( "error props: " + resp.getErrorProperties().size());
-            for( Status stat : resp.getErrorProperties().keySet() ) {
-                List<NameAndError> props = resp.getErrorProperties().get( stat );
-                for( NameAndError ne : props ) {
-                    errors.add(new FieldError(ne.getName().getLocalPart(), ne.getError(), stat.code));
-                }
-            }
-        }
-        log.debug( "errors size: " + errors.size());
-
-        FieldError[] arr = new FieldError[errors.size()];
-        arr = errors.toArray( arr );
-        Writer writer = new PrintWriter( out );
-        JSON json = JSONSerializer.toJSON( arr, cfg );
-        json.write( writer );
-        writer.flush();
     }
 
     @Override
