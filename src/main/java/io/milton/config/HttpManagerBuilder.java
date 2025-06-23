@@ -19,8 +19,6 @@
 package io.milton.config;
 
 import io.milton.annotations.ResourceController;
-import io.milton.cache.CacheManager;
-import io.milton.cache.LocalCacheManager;
 import io.milton.common.FileUtils;
 import io.milton.common.Stoppable;
 import io.milton.context.RootContext;
@@ -175,7 +173,6 @@ public class HttpManagerBuilder {
     private String fsHomeDir = null;
     private PropFindRequestFieldParser propFindRequestFieldParser;
     private PropFindPropertyBuilder propFindPropertyBuilder;
-    private CacheManager cacheManager = new LocalCacheManager(); // used for locking
     private List dependencies;
     private List<String> cookieSigningKeys;
     private String cookieSigningKeysFile;
@@ -1548,14 +1545,6 @@ public class HttpManagerBuilder {
 
     public void setEnableEarlyAuth(boolean enableEarlyAuth) {
         this.enableEarlyAuth = enableEarlyAuth;
-    }
-
-    public CacheManager getCacheManager() {
-        return cacheManager;
-    }
-
-    public void setCacheManager(CacheManager cacheManager) {
-        this.cacheManager = cacheManager;
     }
 
     private Object createObject(Class c) throws CreationException {

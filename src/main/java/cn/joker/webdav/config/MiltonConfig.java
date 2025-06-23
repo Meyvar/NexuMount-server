@@ -14,31 +14,6 @@ import java.io.File;
 
 @Configuration
 public class MiltonConfig {
-
-    private String contextPath;
-
-    @Value("${milton.contextPath}")
-    public void setContextPath(String contextPath) {
-        if (contextPath != null) {
-            contextPath = contextPath.replaceAll("^[/\\\\]+|[/\\\\]+$", "");
-        }
-        this.contextPath = contextPath;
-    }
-
-    @Bean
-    public FilterRegistrationBean<SpringMiltonFilterBean> miltonFilter() {
-        FilterRegistrationBean<SpringMiltonFilterBean> registration = new FilterRegistrationBean<>();
-
-        registration.setFilter(springMiltonFilterBean());
-        registration.addUrlPatterns("/" + contextPath + "/*");
-        return registration;
-    }
-
-    @Bean
-    public SpringMiltonFilterBean springMiltonFilterBean() {
-        return new SpringMiltonFilterBean();
-    }
-
     @Bean
     public ResourceFactory resourceFactory() {
         String path = "webdav";
@@ -46,7 +21,6 @@ public class MiltonConfig {
         factory.setAllowDirectoryBrowsing(true);
         factory.setRoot(new File(path));
         factory.setSecurityManager(new NullSecurityManager());
-        factory.setContextPath(contextPath);
         ensureDataDirectory(path);
         return factory;
     }

@@ -46,10 +46,6 @@ public class AttributeCondition implements Condition {
 		this.value = value;
 	}
 
-	public AttributeCondition(LdapPropertyMapper propertyMapper, String attributeName, Operator operator, int value) {
-		this(propertyMapper, attributeName, operator, String.valueOf(value));
-		isIntValue = true;
-	}
 
 	@Override
 	public boolean isEmpty() {
@@ -73,43 +69,7 @@ public class AttributeCondition implements Condition {
 	public String getValue() {
 		return value;
 	}
-//
-//	public void appendTo(StringBuilder buffer) {
-//		Field field = Field.get(attributeName);
-//		buffer.append('"').append(field.getUri()).append('"');
-//		buffer.append(Conditions.OPERATOR_MAP.get(operator));
-//		//noinspection VariableNotUsedInsideIf
-//		if (field.cast != null) {
-//			buffer.append("CAST (\"");
-//		} else if (!isIntValue && !field.isIntValue()) {
-//			buffer.append('\'');
-//		}
-//		if (Operator.Like == operator) {
-//			buffer.append('%');
-//		}
-//		if ("urlcompname".equals(field.alias)) {
-//			buffer.append(StringUtil.encodeUrlcompname(StringUtil.davSearchEncode(value)));
-//		} else if (field.isIntValue()) {
-//			// check value
-//			try {
-//				Integer.parseInt(value);
-//				buffer.append(value);
-//			} catch (NumberFormatException e) {
-//				// invalid value, replace with 0
-//				buffer.append('0');
-//			}
-//		} else {
-//			buffer.append(StringUtil.davSearchEncode(value));
-//		}
-//		if (Operator.Like == operator || Operator.StartsWith == operator) {
-//			buffer.append('%');
-//		}
-//		if (field.cast != null) {
-//			buffer.append("\" as '").append(field.cast).append("')");
-//		} else if (!isIntValue && !field.isIntValue()) {
-//			buffer.append('\'');
-//		}
-//	}
+
 
 	@Override
 	public boolean isMatch(LdapContact contact) throws BadRequestException {

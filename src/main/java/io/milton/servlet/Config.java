@@ -31,33 +31,12 @@ import java.util.List;
  * @author brad
  */
 public abstract class Config {
-    public abstract ServletContext getServletContext();
 
     public abstract String getInitParameter(String string);
     
 	
 	protected abstract Enumeration initParamNames();
 
-    public File getConfigFile(String path) {
-        return new File( getWebInfDir(), path);
-    }
-
-    public File getWebInfDir() {
-        String s = getServletContext().getRealPath("WEB-INF/" );
-        return new File(s);
-    }
-    
-    public File getRootFolder() {
-        String s = getServletContext().getRealPath("/");
-        return new File(s);
-    }
-    
-    public File mapPath( String url ) {
-        String pth;
-        pth = getServletContext().getRealPath(url);
-        return new File(pth);
-    }	
-	
 	public List<String> getInitParameterNames() {
 		List<String> list = new ArrayList<>();
 		Enumeration en = initParamNames();

@@ -59,22 +59,6 @@ public class MiltonServlet implements Servlet {
         return originalResponse.get();
     }
 
-    /**
-     * Make the servlet config available to any code on this thread.
-     *
-     * @return
-     */
-    public static ServletConfig servletConfig() {
-        return tlServletConfig.get();
-    }
-
-    public static void forward(String url) {
-        try {
-            request().getRequestDispatcher(url).forward(originalRequest.get(), originalResponse.get());
-        } catch (IOException | ServletException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
     private ServletConfigWrapper config;
     private ServletContext servletContext;
     protected HttpManager httpManager;

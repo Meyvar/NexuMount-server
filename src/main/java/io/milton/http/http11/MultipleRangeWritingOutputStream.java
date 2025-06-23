@@ -104,9 +104,6 @@ public class MultipleRangeWritingOutputStream extends OutputStream {
 	}
 
 	private void writeRangeHeader(Range r) throws IOException {
-//--3d6b6a416f9b5
-//Content-Type: text/html
-//Content-Range: bytes 100-200/1270
 		out.write(("\n--" + boundary + "\n").getBytes(StandardCharsets.UTF_8));
 		if (contentType != null) {
 			out.write(("Content-Type: " + contentType + "\n").getBytes(StandardCharsets.UTF_8));

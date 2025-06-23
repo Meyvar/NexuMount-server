@@ -71,17 +71,6 @@ public class DataBinder {
 
         bub = new BeanUtilsBean(convertUtilsBean);
     }
-
-	/**
-	 * 
-	 * @param bean - the object to bind to, using bean property accessors
-	 * @param properties - the map of values to attempt to bind
-	 * @throws IllegalAccessException
-	 * @throws InvocationTargetException 
-	 */
-	public void populate(Object bean, Map properties) throws IllegalAccessException, InvocationTargetException {
-		populate(bean, properties, null);
-	}
 	
 	/**
 	 * 

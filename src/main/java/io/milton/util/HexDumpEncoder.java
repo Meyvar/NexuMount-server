@@ -1,9 +1,6 @@
 package io.milton.util;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 public class HexDumpEncoder {
 
@@ -17,15 +14,15 @@ public class HexDumpEncoder {
 
         c = (char) ((x >> 4) & 0xf);
         if (c > 9)
-            c = (char) ((c-10) + 'A');
+            c = (char) ((c - 10) + 'A');
         else
-            c = (char)(c + '0');
+            c = (char) (c + '0');
         p.write(c);
         c = (char) (x & 0xf);
         if (c > 9)
-            c = (char)((c-10) + 'A');
+            c = (char) ((c - 10) + 'A');
         else
-            c = (char)(c + '0');
+            c = (char) (c + '0');
         p.write(c);
     }
 
@@ -43,8 +40,8 @@ public class HexDumpEncoder {
     }
 
     protected void encodeLinePrefix(OutputStream o, int len) {
-        hexDigit(pStream, (byte)((offset >>> 8) & 0xff));
-        hexDigit(pStream, (byte)(offset & 0xff));
+        hexDigit(pStream, (byte) ((offset >>> 8) & 0xff));
+        hexDigit(pStream, (byte) (offset & 0xff));
         pStream.print(": ");
         currentByte = 0;
         thisLineLength = len;
@@ -80,7 +77,9 @@ public class HexDumpEncoder {
         offset += thisLineLength;
     }
 
-    /** Stream that understands "printing" */
+    /**
+     * Stream that understands "printing"
+     */
     protected PrintStream pStream;
 
     /**
@@ -93,120 +92,9 @@ public class HexDumpEncoder {
             int q = in.read();
             if (q == -1)
                 return i;
-            buffer[i] = (byte)q;
+            buffer[i] = (byte) q;
         }
         return buffer.length;
-    }
-
-    /**
-     * Encode bytes from the input stream, and write them as text characters
-     * to the output stream. This method will run until it exhausts the
-     * input stream, but does not print the line suffix for a final
-     * line that is shorter than bytesPerLine().
-     */
-    public void encode(InputStream inStream, OutputStream outStream)
-            throws IOException
-    {
-        int     j;
-        int     numBytes;
-        byte[]  tmpbuffer = new byte[bytesPerLine()];
-
-        encodeBufferPrefix(outStream);
-
-        while (true) {
-            numBytes = readFully(inStream, tmpbuffer);
-            if (numBytes == 0) {
-                break;
-            }
-            encodeLinePrefix(outStream, numBytes);
-            for (j = 0; j < numBytes; j += bytesPerAtom()) {
-
-                if ((j + bytesPerAtom()) <= numBytes) {
-                    encodeAtom(outStream, tmpbuffer, j, bytesPerAtom());
-                } else {
-                    encodeAtom(outStream, tmpbuffer, j, (numBytes)- j);
-                }
-            }
-            if (numBytes < bytesPerLine()) {
-                break;
-            } else {
-                encodeLineSuffix(outStream);
-            }
-        }
-    }
-
-    /**
-     * A 'streamless' version of encode that simply takes a buffer of
-     * bytes and returns a string containing the encoded buffer.
-     */
-    public String encode(byte[] aBuffer) {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        ByteArrayInputStream inStream = new ByteArrayInputStream(aBuffer);
-        try {
-            encode(inStream, outStream);
-            // explicit ascii->unicode conversion
-            return outStream.toString(ISO_8859_1);
-        } catch (IOException ignore) {
-            // This should never happen.
-            throw new Error("CharacterEncoder.encode internal error");
-        }
-    }
-
-    /**
-     * Return a byte array from the remaining bytes in this ByteBuffer.
-     * <P>
-     * The ByteBuffer's position will be advanced to ByteBuffer's limit.
-     * <P>
-     * To avoid an extra copy, the implementation will attempt to return the
-     * byte array backing the ByteBuffer.  If this is not possible, a
-     * new byte array will be created.
-     */
-    private byte [] getBytes(ByteBuffer bb) {
-        /*
-         * This should never return a BufferOverflowException, as we're
-         * careful to allocate just the right amount.
-         */
-        byte [] buf = null;
-
-        /*
-         * If it has a usable backing byte buffer, use it.  Use only
-         * if the array exactly represents the current ByteBuffer.
-         */
-        if (bb.hasArray()) {
-            byte [] tmp = bb.array();
-            if ((tmp.length == bb.capacity()) &&
-                    (tmp.length == bb.remaining())) {
-                buf = tmp;
-                bb.position(bb.limit());
-            }
-        }
-
-        if (buf == null) {
-            /*
-             * This class doesn't have a concept of encode(buf, len, off),
-             * so if we have a partial buffer, we must reallocate
-             * space.
-             */
-            buf = new byte[bb.remaining()];
-
-            /*
-             * position() automatically updated
-             */
-            bb.get(buf);
-        }
-
-        return buf;
-    }
-
-    /**
-     * A 'streamless' version of encode that simply takes a ByteBuffer
-     * and returns a string containing the encoded buffer.
-     * <P>
-     * The ByteBuffer's position will be advanced to ByteBuffer's limit.
-     */
-    public String encode(ByteBuffer aBuffer) {
-        byte [] buf = getBytes(aBuffer);
-        return encode(buf);
     }
 
     /**
@@ -216,11 +104,10 @@ public class HexDumpEncoder {
      * line at the end of a final line that is shorter than bytesPerLine().
      */
     public void encodeBuffer(InputStream inStream, OutputStream outStream)
-            throws IOException
-    {
-        int     j;
-        int     numBytes;
-        byte[]  tmpbuffer = new byte[bytesPerLine()];
+            throws IOException {
+        int j;
+        int numBytes;
+        byte[] tmpbuffer = new byte[bytesPerLine()];
 
         encodeBufferPrefix(outStream);
 
@@ -234,7 +121,7 @@ public class HexDumpEncoder {
                 if ((j + bytesPerAtom()) <= numBytes) {
                     encodeAtom(outStream, tmpbuffer, j, bytesPerAtom());
                 } else {
-                    encodeAtom(outStream, tmpbuffer, j, (numBytes)- j);
+                    encodeAtom(outStream, tmpbuffer, j, (numBytes) - j);
                 }
             }
             encodeLineSuffix(outStream);
@@ -244,43 +131,4 @@ public class HexDumpEncoder {
         }
     }
 
-    /**
-     * Encode the buffer in <i>aBuffer</i> and write the encoded
-     * result to the OutputStream <i>aStream</i>.
-     */
-    public void encodeBuffer(byte[] aBuffer, OutputStream aStream)
-            throws IOException
-    {
-        ByteArrayInputStream inStream = new ByteArrayInputStream(aBuffer);
-        encodeBuffer(inStream, aStream);
-    }
-
-    /**
-     * A 'streamless' version of encode that simply takes a buffer of
-     * bytes and returns a string containing the encoded buffer.
-     */
-    public String encodeBuffer(byte[] aBuffer) {
-        ByteArrayOutputStream   outStream = new ByteArrayOutputStream();
-        ByteArrayInputStream    inStream = new ByteArrayInputStream(aBuffer);
-        try {
-            encodeBuffer(inStream, outStream);
-        } catch (Exception IOException) {
-            // This should never happen.
-            throw new Error("CharacterEncoder.encodeBuffer internal error");
-        }
-        return (outStream.toString());
-    }
-
-    /**
-     * Encode the <i>aBuffer</i> ByteBuffer and write the encoded
-     * result to the OutputStream <i>aStream</i>.
-     * <P>
-     * The ByteBuffer's position will be advanced to ByteBuffer's limit.
-     */
-    public void encodeBuffer(ByteBuffer aBuffer, OutputStream aStream)
-            throws IOException
-    {
-        byte [] buf = getBytes(aBuffer);
-        encodeBuffer(buf, aStream);
-    }
 }

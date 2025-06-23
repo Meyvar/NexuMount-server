@@ -40,9 +40,6 @@ import java.util.Map;
 public class PropFindXmlGeneratorHelper {
 	private ValueWriters valueWriters;
 
-	public PropFindXmlGeneratorHelper() {
-	}
-
 
 	public PropFindXmlGeneratorHelper(ValueWriters valueWriters) {
 		this.valueWriters = valueWriters;
@@ -147,23 +144,4 @@ public class PropFindXmlGeneratorHelper {
 			elPropStat.close();
 		}
 	}
-
-	void write(ByteArrayOutputStream out, OutputStream outputStream) {
-		try {
-			String xml = out.toString("UTF-8");
-			outputStream.write(xml.getBytes("UTF-8")); // note: this can and should write to the outputstream directory. but if it aint broke, dont fix it...
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
-	}
-
-	public ValueWriters getValueWriters() {
-		return valueWriters;
-	}
-
-	public void setValueWriters(ValueWriters valueWriters) {
-		this.valueWriters = valueWriters;
-	}
-
-
 }

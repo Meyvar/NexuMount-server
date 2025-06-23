@@ -79,42 +79,4 @@ public class PropPatchJsonResource extends JsonResource implements PostableResou
         return Method.PROPPATCH;
     }
 
-
-
-    public static class FieldError {
-
-        private String name;
-        private String description;
-        private int code;
-
-        public FieldError( String name, String description, int code ) {
-            this.name = name;
-            this.description = description;
-            this.code = code;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName( String name ) {
-            this.name = name;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription( String description ) {
-            this.description = description;
-        }
-
-        public int getCode() {
-            return code;
-        }
-
-        public void setCode( int code ) {
-            this.code = code;
-        }
-    }
 }

@@ -74,15 +74,6 @@
             <groupId>commons-lang</groupId>
             <version>2.6</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-            <version>3.1.8</version>
-            <type>jar</type>
-        </dependency>
-
-
     </dependencies>
 
     <build>

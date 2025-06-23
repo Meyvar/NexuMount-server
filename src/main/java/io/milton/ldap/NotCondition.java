@@ -44,10 +44,4 @@ public class NotCondition implements Condition {
 	public boolean isMatch(LdapContact contact) throws NotAuthorizedException, BadRequestException {
 		return !condition.isMatch(contact);
 	}
-
-//	public void appendTo(StringBuilder buffer) {
-//		buffer.append("(Not ");
-//		condition.appendTo(buffer);
-//		buffer.append(')');
-//	}
 }

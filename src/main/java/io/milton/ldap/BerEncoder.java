@@ -71,19 +71,6 @@ public class BerEncoder extends Ber{
         return buf;     // shared buffer, be careful to use this method.
     }
 
-    /**
-     * Gets the buffer that contains the BER encoding, trimming unused bytes.
-     *
-     * @throws IllegalStateException If buffer contains unbalanced sequence.
-     */
-    public byte[] getTrimmedBuf() {
-        int len = getDataLen();
-        byte[] trimBuf = new byte[len];
-
-        System.arraycopy(getBuf(), 0, trimBuf, 0, len);
-        return trimBuf;
-    }
-
 // -------------- encoding methods -------------
 
     /**
@@ -169,11 +156,6 @@ public class BerEncoder extends Ber{
         buf[offset++] = (byte) b;
     }
 
-/*
-    private void deleteByte() {
-        offset--;
-    }
-*/
 
 
     /*
@@ -228,31 +210,6 @@ public class BerEncoder extends Ber{
             buf[offset++] = (byte) ((i & mask) >> 24);
             i <<= 8;
         }
-    }
-
-    /**
-     * Encodes a boolean.
-     *<blockquote><pre>
-     * BER boolean ::= 0x01 0x01 {0xff|0x00}
-     *</pre></blockquote>
-     */
-    public void encodeBoolean(boolean b) {
-        encodeBoolean(b, ASN_BOOLEAN);
-    }
-
-
-    /**
-     * Encodes a boolean and a tag
-     *<blockquote><pre>
-     * BER boolean w TAG ::= tag 0x01 {0xff|0x00}
-     *</pre></blockquote>
-     */
-    public void encodeBoolean(boolean b, int tag) {
-        ensureFreeBytes(3);
-
-        buf[offset++] = (byte) tag;
-        buf[offset++] = 0x01;
-        buf[offset++] = b ? (byte) 0xff : (byte) 0x00;
     }
 
     /**
@@ -345,27 +302,6 @@ public class BerEncoder extends Ber{
         }
     }
 
-    /**
-     * Encodes an array of strings.
-     */
-    public void encodeStringArray(String strs[], boolean encodeUTF8)
-            throws Ber.EncodeException {
-        if (strs == null)
-            return;
-        for (int i = 0; i < strs.length; i++) {
-            encodeString(strs[i], encodeUTF8);
-        }
-    }
-/*
-    private void encodeNull() {
-
-        //
-        // NULL ::= 0x05 0x00
-        //
-        encodeByte(0x05);
-        encodeByte(0x00);
-    }
-*/
 
     /**
      * Ensures that there are at least "len" unused bytes in "buf".

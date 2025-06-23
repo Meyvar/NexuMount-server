@@ -189,21 +189,5 @@ public class PutHelper {
         return findNearestParent( manager, host, path.getParent() );
     }
 
-    /**
-     * Copy the current content of the resource to the outputstream, except
-     * writing the new partial update for the given range.
-     *
-     *
-     * @param replacee - the resource to get the content for and to update
-     * @param request
-     * @param range
-     * @param tempOut
-     */
-    public void applyPartialUpdate(GetableResource replacee, Request request, Range range, OutputStream tempOut) throws NotAuthorizedException, BadRequestException, NotFoundException {
-        try {
-            replacee.sendContent(tempOut, null, null, null);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
+
 }

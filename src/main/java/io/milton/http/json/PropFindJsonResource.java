@@ -52,8 +52,6 @@ public class PropFindJsonResource extends JsonResource implements GetableResourc
 
 	@Override
     public void sendContent(OutputStream out, Range range, Map<String, String> params, String contentType) throws IOException, NotAuthorizedException, BadRequestException {
-        //jsonPropFindHandler.sendContent( wrappedResource, encodedUrl, out, range, params, contentType );
-        jsonPropFindHandler.sendContent(wrappedResource, encodedUrl, out, range, params, contentType);
     }
 
     @Override

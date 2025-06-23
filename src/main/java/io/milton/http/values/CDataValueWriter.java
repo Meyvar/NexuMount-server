@@ -69,11 +69,6 @@ public class CDataValueWriter implements ValueWriter {
 			writer.writeProperty(prefix, localName, s);
 		}
 	}
-
-    private String nameEncode( String s ) {
-        //return Utils.encode(href, false); // see MIL-31
-        return Utils.escapeXml( s );
-    }	
 	
 	@Override
 	public Object parse(String namespaceURI, String localPart, String value) {

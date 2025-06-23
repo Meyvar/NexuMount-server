@@ -77,20 +77,8 @@ public class DigestHelper {
             log.debug("nc: " + auth.getNc());
 
 
-            // Decode nonce from Base64
-            // format of nonce is
-            //   base64(expirationTime + "" + md5Hex(expirationTime + "" + key))
             String plainTextNonce = new String(Base64.decodeBase64(auth.getNonce().getBytes("UTF-8")));
             NonceValidity validity = nonceProvider.getNonceValidity(plainTextNonce, nc, auth.getUser());
-            //        if( NonceValidity.INVALID.equals( validity ) ) {
-            //            log.debug( "invalid nonce: " + plainTextNonce );
-            //            return null;
-            //        } else if( NonceValidity.EXPIRED.equals( validity ) ) {
-            //            log.debug( "expired nonce: " + plainTextNonce );
-            //            // make this known so that we can add stale field to challenge
-            //            auth.setNonceStale( true );
-            //            return null;
-            //        }
 
             return toDigestResponse(auth, method);
         } catch (UnsupportedEncodingException ex) {

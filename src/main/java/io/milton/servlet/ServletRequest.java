@@ -23,14 +23,11 @@ import io.milton.http.*;
 import io.milton.http.Response.ContentType;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.util.*;
 
 public class ServletRequest extends AbstractRequest {
@@ -73,10 +70,6 @@ public class ServletRequest extends AbstractRequest {
         return tlRequest.get();
     }
 
-    public static ServletContext getTLServletContext() {
-        return tlServletContext.get();
-    }
-
     static void clearThreadLocals() {
         tlRequest.remove();
         tlServletContext.remove();
@@ -103,10 +96,6 @@ public class ServletRequest extends AbstractRequest {
             }
             log.trace("-------------------------------------------");
         }
-    }
-
-    public HttpSession getSession() {
-        return request.getSession();
     }
 
     @Override
@@ -165,51 +154,6 @@ public class ServletRequest extends AbstractRequest {
 
     }
 
-    private void parseQueryString(Map<String, String> map) {
-        String qs = request.getQueryString();
-        parseQueryString(map, qs);
-    }
-
-    public static void parseQueryString(Map<String, String> map, String qs) {
-        if (qs == null) {
-            return;
-        }
-        String[] nvs = qs.split("&");
-        for (String nv : nvs) {
-            String[] parts = nv.split("=");
-            String key = parts[0];
-            String val = null;
-            if (parts.length > 1) {
-                val = parts[1];
-            }
-            if (val != null) {
-                try {
-                    val = URLDecoder.decode(val, "UTF-8");
-                } catch (UnsupportedEncodingException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-            map.put(key, val);
-        }
-    }
-
-    protected ContentType getRequestContentType() {
-        String s = request.getContentType();
-        log.trace("request content type - {}", s);
-        if (s == null) {
-            return null;
-        }
-        if (s.contains(Response.MULTIPART)) {
-            return ContentType.MULTIPART;
-        }
-        return typeContents.get(s);
-    }
-
-    protected boolean isMultiPart() {
-        ContentType ct = getRequestContentType();
-        log.trace("content type: {}", ct);
-        return (ContentType.MULTIPART.equals(ct));
-    }
 
     @Override
     public Map<String, String> getHeaders() {
@@ -250,10 +194,6 @@ public class ServletRequest extends AbstractRequest {
     @Override
     public String getRemoteAddr() {
         return request.getRemoteAddr();
-    }
-
-    public ServletContext getServletContext() {
-        return servletContext;
     }
 
     @Override

@@ -172,16 +172,5 @@ public class SchedulingInboxResource extends BaseSchedulingResource implements C
     public Date getCreateDate() {
         return principal.getCreateDate();
     }
-//
-//    @Override
-//    public String getUniqueId() {
-//        return principal.getName() + "_inbox";
-//    }
-//
-//    @Override
-//    public Date getModifiedDate() {
-//        return super.getModifiedDate(); //To change body of generated methods, choose Tools | Templates.
-//    }
-
 
 }

@@ -167,9 +167,6 @@ public class DefaultHttp11ResponseHandler implements Http11ResponseHandler, Buff
             e.printStackTrace();
         }
 
-//		response.sendRedirect(redirectUrl);
-//        response.setStatus(Response.Status.SC_MOVED_TEMPORARILY);
-//        response.setLocationHeader(redirectUrl);
     }
 
     @Override
@@ -222,11 +219,6 @@ public class DefaultHttp11ResponseHandler implements Http11ResponseHandler, Buff
         if (etag != null) {
             response.setEtag(etag);
         }
-        //String acc = request.getAcceptHeader();
-//		String ct = resource.getContentType(acc);
-//		if (ct != null) {
-//			response.setContentTypeHeader(ct);
-//		}
         response.setContentLengthHeader(contentLength);
         response.setEntity(new GetableResourceEntity(resource, range, params, null));
     }
@@ -358,7 +350,7 @@ public class DefaultHttp11ResponseHandler implements Http11ResponseHandler, Buff
 
     protected void setRespondCommonHeaders(Response response, Resource resource, Status status, Auth auth) {
         response.setStatus(status);
-        response.setNonStandardHeader("Server", "nginx");
+//        response.setNonStandardHeader("Server", "nginx");
         response.setDateHeader(new Date());
         response.setNonStandardHeader("Accept-Ranges", "bytes");
         String etag = eTagGenerator.generateEtag(resource);
@@ -388,16 +380,6 @@ public class DefaultHttp11ResponseHandler implements Http11ResponseHandler, Buff
         if (modDate != null) {
             // HACH - see if this helps IE
             response.setLastModifiedHeader(modDate);
-//            if (resource instanceof GetableResource) {
-//                GetableResource gr = (GetableResource) resource;
-//                Long maxAge = gr.getMaxAgeSeconds(auth);
-//                if (maxAge != null && maxAge > 0) {
-//                    log.trace("setModifiedDate: has a modified date and a positive maxAge, so adjust modDate");
-//                    long tm = System.currentTimeMillis() - 60000; // modified 1 minute ago
-//                    modDate = new Date(tm); // have max-age, so use current date
-//                }
-//            }
-//            response.setLastModifiedHeader(modDate);
         }
     }
 

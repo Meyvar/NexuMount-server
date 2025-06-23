@@ -45,14 +45,6 @@ public class PropertyMap {
 		this.nameSpace = nameSpace;
 	}
 
-	public boolean hasProperty(QName name) {
-		if (!name.getNamespaceURI().equals(nameSpace)) {
-			return false;
-		}
-		StandardProperty pa = writersMap.get(name.getLocalPart());
-		return pa != null;
-	}
-
 	public Object getProperty(QName name, Resource r) {
 		if (!name.getNamespaceURI().equals(nameSpace)) {
 			return null;
@@ -65,24 +57,6 @@ public class PropertyMap {
 			return pa.getValue((PropFindableResource) r);
 		} else {
 			return null;
-		}
-	}
-
-	public void setProperty(QName name, Resource r, Object val) {
-		if (!name.getNamespaceURI().equals(nameSpace)) {
-			return;
-		}
-		StandardProperty pa = writersMap.get(name.getLocalPart());
-		if (pa == null) {
-			return;
-		} else if( !(pa instanceof WritableStandardProperty)) {
-			return ;
-		}
-		WritableStandardProperty wsp = (WritableStandardProperty) pa;
-		if (r instanceof PropFindableResource) {
-			wsp.setValue((PropFindableResource) r, val);
-		} else {
-			return;
 		}
 	}
 
@@ -129,7 +103,5 @@ public class PropertyMap {
 	}
 
 	public interface WritableStandardProperty<T> extends StandardProperty<T> {
-
-		void setValue(PropFindableResource res, T value);
 	}
 }

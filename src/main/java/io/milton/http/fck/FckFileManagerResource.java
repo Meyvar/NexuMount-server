@@ -48,14 +48,6 @@ public class FckFileManagerResource extends FckCommon implements GetableResource
 
 	public final static String UPLOAD_RESPONSE_TEMPLATE = "<script type=\"text/javascript\">window.parent.CKEDITOR.tools.callFunction( [func], \"[name]\" );</script>";
 
-//    public final static String UPLOAD_RESPONSE_TEMPLATE_NORMAL = ""
-//        + "<script type=\"text/javascript\">\n"
-//        + "window.parent.frames['frmUpload'].OnUploadCompleted([code],'[name]') ;\n"
-//        + "</script>\n";
-//    public final static String UPLOAD_RESPONSE_TEMPLATE = ""
-//        + "<script type='text/javascript'>\n"
-//        + "    window.parent.OnUploadCompleted( '[code]', '[msg]' ) ;\n"
-//        + "</script>\n";
     private FckPostParams uploadParams;
 
     public FckFileManagerResource( CollectionResource folder ) {

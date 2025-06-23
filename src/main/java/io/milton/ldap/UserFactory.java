@@ -46,7 +46,7 @@ public interface UserFactory {
 	 * Search for contacts in the Global Address List
 	 * 
 	 * @param equalTo
-	 * @param convertLdapToContactReturningAttributes
+	 * @param
 	 * @param sizeLimit
 	 * @return 
 	 */

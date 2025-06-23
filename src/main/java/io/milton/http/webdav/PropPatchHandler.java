@@ -29,7 +29,6 @@ import io.milton.http.exceptions.BadRequestException;
 import io.milton.http.exceptions.ConflictException;
 import io.milton.http.exceptions.NotAuthorizedException;
 import io.milton.property.PropertyAuthoriser;
-import io.milton.property.PropertyHandler;
 import io.milton.resource.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-public class PropPatchHandler implements ExistingEntityHandler, PropertyHandler {
+public class PropPatchHandler implements ExistingEntityHandler {
 
     private final static Logger log = LoggerFactory.getLogger( PropPatchHandler.class );
     private final ResourceHandlerHelper resourceHandlerHelper;
@@ -156,60 +155,5 @@ public class PropPatchHandler implements ExistingEntityHandler, PropertyHandler 
         return set;
     }
 
-	@Override
-    public PropertyAuthoriser getPermissionService() {
-        return permissionService;
-    }
-
-    public static class Field {
-
-        public final String name;
-        String namespaceUri;
-
-        public Field( String name ) {
-            this.name = name;
-        }
-
-        public void setNamespaceUri( String namespaceUri ) {
-            this.namespaceUri = namespaceUri;
-        }
-
-        public String getNamespaceUri() {
-            return namespaceUri;
-        }
-    }
-
-    public static class SetField extends Field {
-
-        public final String value;
-
-        public SetField( String name, String value ) {
-            super( name );
-            this.value = value;
-        }
-    }
-
-    public static class Fields implements Iterable<Field> {
-
-        /**
-         * fields to remove
-         */
-        public final List<Field> removeFields = new ArrayList<>();
-        /**
-         * fields to set to a value
-         */
-        public final List<SetField> setFields = new ArrayList<>();
-
-        private int size() {
-            return removeFields.size() + setFields.size();
-        }
-
-		@Override
-        public Iterator<Field> iterator() {
-            List<Field> list = new ArrayList<>(removeFields);
-            list.addAll( setFields );
-            return list.iterator();
-        }
-    }
 }
 

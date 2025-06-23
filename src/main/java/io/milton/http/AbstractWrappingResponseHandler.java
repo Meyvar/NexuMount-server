@@ -190,10 +190,6 @@ public abstract class AbstractWrappingResponseHandler implements WebDavResponseH
 		wrapped.respondDeleteFailed(request, response, resource, status);
 	}
 
-	public void respondPropFind(List<PropFindResponse> propFindResponses, Response response, Request request, PropFindableResource pfr) {
-		wrapped.respondPropFind(propFindResponses, response, request, pfr);
-	}
-
 	@Override
 	public void respondPropFind(List<PropFindResponse> propFindResponses, Response response, Request request, Resource r) {
 		wrapped.respondPropFind(propFindResponses, response, request, r);

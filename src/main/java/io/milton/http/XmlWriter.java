@@ -372,27 +372,6 @@ public class XmlWriter {
 
 			return new Element(this, uri, prefix, name);
 		}
-
-		/**
-		 * Write a property element like - <name>value</name>
-		 *
-		 * @param name
-		 * @param value
-		 * @return
-		 */
-		public Element prop(String name, String value) {
-			begin(name).writeText(value, false).close(true);
-			return this;
-		}
-
-		public Element prop(String name, Integer value) {
-			if (value != null) {
-				prop(name, value.toString());
-			} else {
-				begin(name).noContent();
-			}
-			return this;
-		}
 	}
 
 	public Element begin(String name) {
@@ -451,14 +430,6 @@ public class XmlWriter {
 		append(text);
 	}
 
-	/**
-	 * Write a CDATA segment.
-	 *
-	 * @param data Data to append
-	 */
-	public void writeData(String data) {
-		append("<![CDATA[" + data + "]]>");
-	}
 
 	public void writeXMLHeader() {
 		append("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n");

@@ -151,22 +151,6 @@ public class MkColHandler implements Handler {
 		}
 
 		MakeCollectionableResource existingCol = (MakeCollectionableResource) resource;
-//		try {
-//			//For litmus test and RFC support
-//			if (request.getInputStream().read() > -1) //This should be empty
-//			{
-//				log.info("unsupported media type1");
-//				response.setStatus(Response.Status.SC_UNSUPPORTED_MEDIA_TYPE);
-//				return;
-//			}
-//		} catch (Exception ex) {
-//			//Per RFC2518 MKCOL request-content is undefined and it is therefore MANDATORY to return 415 if it exists.
-//			if (request.getContentLengthHeader() > 0) {
-//				log.info("unsupported media type2");
-//				response.setStatus(Response.Status.SC_UNSUPPORTED_MEDIA_TYPE);
-//				return;
-//			}
-//		}
 
 		Resource existingChild = existingCol.child(newName);
 		if (existingChild != null) {

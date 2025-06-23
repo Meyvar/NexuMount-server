@@ -108,10 +108,6 @@ public class GetHandler implements ExistingEntityHandler {
 		return false;
 	}
 
-	private boolean checkIfMatch(GetableResource handler, Request requestInfo) {
-		return false;   // TODO: not implemented
-	}
-
 
 	/**
 	 *
@@ -178,10 +174,6 @@ public class GetHandler implements ExistingEntityHandler {
 				return unchangedSince;
 			}
 		}
-	}
-
-	private boolean checkIfNoneMatch(GetableResource handler, Request requestInfo) {
-		return false;   // TODO: not implemented
 	}
 
 	@Override

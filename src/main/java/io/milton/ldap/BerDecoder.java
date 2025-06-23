@@ -89,17 +89,6 @@ public class BerDecoder extends Ber{
         return seq;
     }
 
-    /**
-     * Used to skip bytes. Usually used when trying to recover from parse error.
-     * Don't need to be public right now?
-     * @param i The number of bytes to skip
-     */
-    void seek(int i) throws Ber.DecodeException {
-        if (offset + i > bufsize || offset + i < 0) {
-            throw new Ber.DecodeException("array index out of bounds");
-        }
-        offset += i;
-    }
 
     /**
      * Parses the next byte in this BER buffer.

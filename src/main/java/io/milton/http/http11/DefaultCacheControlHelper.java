@@ -45,27 +45,11 @@ public class DefaultCacheControlHelper implements CacheControlHelper {
         if( delta != null && delta > 0 ) {
             if( usePrivateCache && auth != null ) {
                 response.setCacheControlPrivateMaxAgeHeader( delta );
-                //response.setCacheControlMaxAgeHeader(delta);
             } else {
-//				long l = System.currentTimeMillis() + (delta*1000);
-//				Date expiryDate = new Date(l);
-//				response.setExpiresHeader(expiryDate);
                 response.setCacheControlMaxAgeHeader( delta );
             }
-            // Disable, might be interfering with IE.. ?
-//            Date expiresAt = calcExpiresAt( new Date(), delta.longValue() );
-//            if( log.isTraceEnabled() ) {
-//                log.trace( "set expires: " + expiresAt );
-//            }
-//            response.setExpiresHeader( expiresAt );
         } else {
             response.setCacheControlNoCacheHeader();
         }
-    }
-
-    public static Date calcExpiresAt( Date modifiedDate, long deltaSeconds ) {
-        long deltaMs = deltaSeconds * 1000;
-        long expiresAt = System.currentTimeMillis() + deltaMs;
-        return new Date( expiresAt );
     }
 }

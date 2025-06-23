@@ -34,44 +34,8 @@ import java.util.List;
  * @author brad
  */
 public class CalendarInvitationsAnnotationHandler extends AbstractAnnotationHandler {
-
-	private static final Logger log = LoggerFactory.getLogger(CalendarInvitationsAnnotationHandler.class);
-
 	public CalendarInvitationsAnnotationHandler(final AnnotationResourceFactory outer) {
 		super(outer, CalendarInvitations.class);
 	}
 
-	public List<ICalResource> getCalendarInvitations(AnnoPrincipalResource parent) {
-		List<ICalResource> invitations = new ArrayList<>();
-		Object source = parent.getSource();
-		for (ControllerMethod cm : getMethods(source.getClass())) {
-			try {
-				Object o = invoke(cm, parent);
-				if (o == null) {
-					// ignore
-				} else if (o instanceof Collection) {
-					Collection l = (Collection) o;
-					for (Object childSource : l) {
-						createAndAdd(invitations, childSource, parent);
-					}
-				} else if (o.getClass().isArray()) {
-					Object[] arr = (Object[]) o;
-					for (Object childSource : arr) {
-						createAndAdd(invitations, childSource, parent);
-					}
-				} else {
-					createAndAdd(invitations, o, parent);
-				}
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-
-		}
-		return invitations;
-	}
-	
-	private void createAndAdd(List<ICalResource> invitations, Object childSource,AnnoPrincipalResource parent ) {
-		AnnoEventResource e = new AnnoEventResource(annoResourceFactory, childSource, parent);
-		invitations.add(e);
-	}
 }

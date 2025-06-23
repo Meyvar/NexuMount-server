@@ -244,16 +244,6 @@ public class WebDavProtocol implements HttpExtension, PropertySource {
 		public Class<String> getValueClass() {
 			return String.class;
 		}
-
-		@Override
-		public void setValue(PropFindableResource res, String value) {
-			if( res instanceof DisplayNameResource) {
-				DisplayNameResource dnr = (DisplayNameResource) res;
-				dnr.setDisplayName(value);
-			} else {
-				log.warn("Attempt to set displayname property, but resource is not compatible: " + res.getClass());
-			}
-		}
 	}
 
 	static class CreationDatePropertyWriter implements StandardProperty<Date> {

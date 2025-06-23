@@ -58,14 +58,6 @@ public class SimpleSecurityManager implements io.milton.http.SecurityManager {
         digestGenerator = new DigestGenerator();
     }
 
-    public Object getUserByName(String name) {
-        String actualPassword = nameAndPasswords.get(name);
-        if (actualPassword != null) {
-            return name;
-        }
-        return null;
-    }
-
     @Override
     public Object authenticate(String user, String password) {
         log.debug("authenticate: " + user + " - " + password);
@@ -138,13 +130,6 @@ public class SimpleSecurityManager implements io.milton.http.SecurityManager {
     public boolean isDigestAllowed() {
         return digestGenerator != null;
     }
-
-//    public MiltonUser getUserByName( String name, String domain ) {
-//        log.debug( "getUserByName: " + name + " - " + domain);
-//        String actualPassword = nameAndPasswords.get( name );
-//        if( actualPassword == null ) return null;
-//        return new MiltonUser( name, name, domain );
-//    }
 
     public DigestGenerator getDigestGenerator() {
         return digestGenerator;

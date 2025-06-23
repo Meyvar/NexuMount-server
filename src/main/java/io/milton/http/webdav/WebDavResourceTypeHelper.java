@@ -37,7 +37,6 @@ import java.util.List;
  */
 public class WebDavResourceTypeHelper implements ResourceTypeHelper {
 
-    private static final Logger log = LoggerFactory.getLogger( WebDavResourceTypeHelper.class );
 
 	@Override
     public List<QName> getResourceTypes( Resource r ) {

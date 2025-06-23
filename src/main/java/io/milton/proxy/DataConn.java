@@ -38,9 +38,6 @@ class DataConn {
     protected InputStream is;
     protected OutputStream os;
 
-    public DataConn() {
-    }
-
     public DataConn(String szhost, int port) {
         try {
             connect(new Socket(InetAddress.getByName(szhost), port));
@@ -50,14 +47,6 @@ class DataConn {
         }
     }
 
-    public DataConn(InetAddress rhost, int port) {
-        try {
-            connect(new Socket(rhost, port));
-        } catch (Throwable T) {
-            System.err.println("new dataconn ERR: " + T.getMessage());
-            error = true;
-        }
-    }
 
     public DataConn(Socket _s) {
         connect(_s);

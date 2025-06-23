@@ -113,26 +113,6 @@ public class ProxyServer implements Runnable, Service {
         return targetPort;
     }
 
-    /**
-     * @param targetPort the targetPort to set
-     */
-    public void setTargetPort(int targetPort) {
-        this.targetPort = targetPort;
-    }
-
-    /**
-     * @return the listenPort
-     */
-    public int getListenPort() {
-        return listenPort;
-    }
-
-    /**
-     * @param listenPort the listenPort to set
-     */
-    public void setListenPort(int listenPort) {
-        this.listenPort = listenPort;
-    }
 
     /**
      * @return the targetHost
@@ -140,14 +120,6 @@ public class ProxyServer implements Runnable, Service {
     public String getTargetHost() {
         return targetHost;
     }
-
-    /**
-     * @param targetHost the targetHost to set
-     */
-    public void setTargetHost(String targetHost) {
-        this.targetHost = targetHost;
-    }
-    
 
 }
 

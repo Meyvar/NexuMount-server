@@ -165,7 +165,7 @@ public class FsDirectoryResource extends FsResource implements MakeCollectionabl
      */
     @Override
     public void sendContent(OutputStream out, Range range, Map<String, String> params, String contentType) throws IOException, NotAuthorizedException {
-        String uri = "/" + factory.getContextPath();
+//        String uri = "/" + factory.getContextPath();
         XmlWriter w = new XmlWriter(out);
         w.open("html lang=\"zh-CN\"");
         w.open("head");
@@ -203,7 +203,7 @@ public class FsDirectoryResource extends FsResource implements MakeCollectionabl
             w.open("tr");
 
             w.open("td");
-            String path = buildHref(uri + getFile().getCanonicalPath().substring(factory.getRoot().getCanonicalPath().length()).replace('\\', '/'), r.getName());
+            String path = buildHref(getFile().getCanonicalPath().substring(factory.getRoot().getCanonicalPath().length()).replace('\\', '/'), r.getName());
             w.begin("a").writeAtt("href", path).open().writeText(r.getName()).close();
 
             w.begin("a").writeAtt("href", "#").writeAtt("onclick", "editDocument('" + path + "')").open().writeText("(edit with office)").close();

@@ -20,9 +20,7 @@
 package io.milton.http.json;
 
 import io.milton.http.FileItem;
-import io.milton.http.HttpManager;
 import io.milton.http.Range;
-import io.milton.http.Request;
 import io.milton.http.Request.Method;
 import io.milton.http.exceptions.BadRequestException;
 import io.milton.http.exceptions.ConflictException;
@@ -31,10 +29,8 @@ import io.milton.resource.GetableResource;
 import io.milton.resource.PostableResource;
 import io.milton.resource.Resource;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.Map;
 
 /**

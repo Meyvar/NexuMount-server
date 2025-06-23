@@ -220,21 +220,6 @@ public class AuthenticationService {
 
     }
 
-    /**
-     * Determine if there are any credentials present. Note this does not check
-     * if the provided credentials are valid, only if they are available
-     *
-     * @param request
-     * @return
-     */
-    public boolean authenticateDetailsPresent(Request request) {
-        for (AuthenticationHandler h : authenticationHandlers) {
-            if (h.credentialsPresent(request)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     public static class AuthStatus {
 

@@ -38,12 +38,6 @@ public class ServletConfigWrapper extends Config {
 	public ServletConfigWrapper(ServletConfig config) {
 		this.config = config;
 	}
-		
-	
-	@Override
-	public ServletContext getServletContext() {
-		return config.getServletContext();
-	}
 
 	@Override
 	public String getInitParameter(String string) {

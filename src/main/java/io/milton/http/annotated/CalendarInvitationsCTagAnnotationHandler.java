@@ -37,26 +37,4 @@ public class CalendarInvitationsCTagAnnotationHandler extends AbstractAnnotation
 	public CalendarInvitationsCTagAnnotationHandler(final AnnotationResourceFactory outer) {
 		super(outer, CalendarInvitationsCTag.class);
 	}
-
-	public String getCalendarInvitationsCtag(AnnoPrincipalResource parent) {
-		Object source = parent.getSource();
-		ControllerMethod cm = getBestMethod(source.getClass());
-		String ctag = null;
-		if( cm != null ) {
-			Object rawId;
-			try {
-				rawId = cm.method.invoke(cm.controller, source);
-			} catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException ex) {
-				throw new RuntimeException(ex);
-			}
-            if( rawId != null ) {
-				ctag = rawId.toString();
-				if( ctag.length() == 0 ) {
-					ctag = null;
-				}
-			}
-		}
-		return ctag;
-	}
-
 }

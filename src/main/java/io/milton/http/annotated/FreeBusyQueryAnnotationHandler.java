@@ -18,8 +18,6 @@ package io.milton.http.annotated;
 
 import io.milton.annotations.FreeBusyQuery;
 import io.milton.resource.SchedulingResponseItem;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -28,8 +26,6 @@ import java.util.List;
  * @author brad
  */
 public class FreeBusyQueryAnnotationHandler extends AbstractAnnotationHandler {
-
-	private static final Logger log = LoggerFactory.getLogger(FreeBusyQueryAnnotationHandler.class);
 
 	public FreeBusyQueryAnnotationHandler(final AnnotationResourceFactory outer) {
 		super(outer, FreeBusyQuery.class);

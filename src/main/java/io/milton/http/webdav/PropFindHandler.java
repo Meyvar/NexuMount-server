@@ -26,7 +26,6 @@ import io.milton.http.exceptions.ConflictException;
 import io.milton.http.exceptions.NotAuthorizedException;
 import io.milton.property.DefaultPropertyAuthoriser;
 import io.milton.property.PropertyAuthoriser;
-import io.milton.property.PropertyHandler;
 import io.milton.resource.PropFindableResource;
 import io.milton.resource.Resource;
 import org.slf4j.Logger;
@@ -42,7 +41,7 @@ import java.util.Set;
 /**
  * @author brad
  */
-public class PropFindHandler implements ExistingEntityHandler, PropertyHandler {
+public class PropFindHandler implements ExistingEntityHandler {
 
     private static final Logger log = LoggerFactory.getLogger(PropFindHandler.class);
     private final ResourceHandlerHelper resourceHandlerHelper;
@@ -51,21 +50,6 @@ public class PropFindHandler implements ExistingEntityHandler, PropertyHandler {
     private final PropFindPropertyBuilder propertyBuilder;
     private final PropertyAuthoriser permissionService = new DefaultPropertyAuthoriser();
 
-//    /**
-//     *
-//     * @param resourceHandlerHelper
-//     * @param resourceTypeHelper
-//     * @param responseHandler
-//     */
-//    public PropFindHandler( ResourceHandlerHelper resourceHandlerHelper, ResourceTypeHelper resourceTypeHelper, WebDavResponseHandler responseHandler, List<PropertySource> propertySources ) {
-//        this.resourceHandlerHelper = resourceHandlerHelper;
-//
-//        DefaultPropFindRequestFieldParser defaultFieldParse = new DefaultPropFindRequestFieldParser();
-//        this.requestFieldParser = new MsPropFindRequestFieldParser( defaultFieldParse ); // use MS decorator for windows support
-//        this.responseHandler = responseHandler;
-//
-//        this.propertyBuilder = new PropFindPropertyBuilder( propertySources );
-//    }
 
     /**
      * @param resourceHandlerHelper
@@ -160,8 +144,4 @@ public class PropFindHandler implements ExistingEntityHandler, PropertyHandler {
         return set;
     }
 
-    @Override
-    public PropertyAuthoriser getPermissionService() {
-        return permissionService;
-    }
 }

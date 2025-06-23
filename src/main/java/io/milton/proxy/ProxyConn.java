@@ -31,16 +31,6 @@ class ProxyConn implements Runnable {
     public ProxyConn() {
     }
 
-    public ProxyConn(DataConn _c1, DataConn _c2) {
-        c1 = _c2;
-        c2 = _c2;
-    }
-
-    public ProxyConn(Socket s1, Socket s2) {
-        c1 = new DataConn(s1);
-        c2 = new DataConn(s2);
-    }
-
     public ProxyConn(Socket s1, String thost, int tport) {
         c1 = new DataConn(s1);
         c2 = new DataConn(thost, tport);
