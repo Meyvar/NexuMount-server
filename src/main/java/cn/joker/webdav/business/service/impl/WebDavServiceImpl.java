@@ -1,11 +1,15 @@
 package cn.joker.webdav.business.service.impl;
 
+import cn.joker.webdav.business.entity.FileRessource;
 import cn.joker.webdav.business.service.IWebDavService;
 import cn.joker.webdav.handle.FileHandle;
+import cn.joker.webdav.handle.SystemFileHandle;
 import cn.joker.webdav.utils.RequestHolder;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -19,11 +23,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
 
 @Service
 public class WebDavServiceImpl implements IWebDavService {
 
-    private FileHandle fileHandle;
+    private FileHandle fileHandle = new SystemFileHandle();
+
+    @Autowired
+    @Qualifier("rootHandle")
+    private FileHandle rootHandle;
 
     private static final String ROOT_DIR = "webdav";
 
@@ -36,7 +46,7 @@ public class WebDavServiceImpl implements IWebDavService {
         String method = request.getMethod();
         String uri = URLDecoder.decode(request.getRequestURI(), StandardCharsets.UTF_8);
 
-        Path path = Paths.get(ROOT_DIR, uri).normalize();
+        Path path = Paths.get(uri).normalize();
 
         response.setHeader("DAV", "1,2");
         response.setContentType("application/xml;charset=UTF-8");
@@ -64,63 +74,75 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handlePropFind(HttpServletResponse resp, Path path, String uri) throws IOException {
-        if (!Files.exists(path)) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
+
+        List<FileRessource> list = null;
+
+        if ("/".equals(path.toString()) || "\\".equals(path.toString()) || path.toString().isEmpty()) {
+            list = rootHandle.handlePropFind(path, uri);
+        } else {
+            if (!fileHandle.hasPath(path)) {
+                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            } else {
+                list = fileHandle.handlePropFind(path, uri);
+            }
         }
+
+        /**
+         * 文件路径本身
+         */
+        FileRessource fileRessource = new FileRessource();
+        fileRessource.setType("folder");
+        fileRessource.setName(uri);
+        fileRessource.setSize(0L);
+        fileRessource.setDate(new Date());
+        list.addFirst(fileRessource);
+
 
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
         xml.append("<d:multistatus xmlns:cal=\"urn:ietf:params:xml:ns:caldav\" xmlns:cs=\"http://calendarserver.org/ns/\" xmlns:card=\"urn:ietf:params:xml:ns:carddav\" xmlns:d=\"DAV:\">");
 
 
-        File file = path.toFile();
-        File[] children = file.isDirectory() ? file.listFiles() : new File[0];
-        File[] files = new File[children.length + 1];
-        files[0] = file; // 当前资源本身放第一个
-        for (int i = 0; i < children.length; i++) {
-            files[i + 1] = children[i];
-        }
-        if (files != null) {
-            for (File f : files) {
-                if (f == null) {
-                    continue;
-                }
-                String name = f.getName();
-
-                String fullPath;
-                if (f.equals(file)) {
-                    fullPath = uri;
-                } else {
-                    fullPath = uri.endsWith("/") ? uri + name : uri + "/" + name;
-                }
-                if (f.isDirectory() && !fullPath.endsWith("/")) {
-                    fullPath += "/";
-                }
-
-                xml.append("<d:response> ");
-                xml.append("<d:href>").append(encodeHref(fullPath)).append("</d:href> ");
-                xml.append("<d:propstat> <d:prop> ");
-                xml.append("<d:resourcetype>").append(f.isDirectory() ? "<d:collection/>" : "").append("</d:resourcetype> ");
-                xml.append("<d:getcontentlength>").append(f.length()).append("</d:getcontentlength> ");
-                xml.append("<d:getlastmodified>").append(
-                        Files.getLastModifiedTime(f.toPath())
-                                .toInstant()
-                                .atZone(java.time.ZoneOffset.UTC)
-                                .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
-                ).append("</d:getlastmodified>");
-
-                String safeDisplayName = f.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
-                xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
-                xml.append("</d:prop> <d:status>HTTP/1.1 200 OK</d:status> </d:propstat> ");
-                xml.append("</d:response> ");
+        for (FileRessource ressource : list) {
+            if (ressource == null) {
+                continue;
             }
+
+
+            String name = ressource.getName();
+
+            String fullPath = uri.endsWith("/") ? uri + name : uri + "/" + name;
+
+            if (ressource.getType().equals("folder") && !fullPath.endsWith("/")) {
+                fullPath += "/";
+            }
+
+            xml.append("<d:response> ");
+            xml.append("<d:href>").append(encodeHref(fullPath)).append("</d:href> ");
+            xml.append("<d:propstat> <d:prop> ");
+            xml.append("<d:resourcetype>").append("folder".equals(ressource.getType()) ? "<d:collection/>" : "").append("</d:resourcetype> ");
+            xml.append("<d:getcontentlength>").append(ressource.getSize()).append("</d:getcontentlength> ");
+            xml.append("<d:getlastmodified>").append(
+                    ressource.getDate()
+                            .toInstant()
+                            .atZone(java.time.ZoneOffset.UTC)
+                            .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+            ).append("</d:getlastmodified>");
+
+            String safeDisplayName = ressource.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+            xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
+            xml.append("</d:prop> <d:status>HTTP/1.1 200 OK</d:status> </d:propstat> ");
+            xml.append("</d:response> ");
+
         }
+
 
         xml.append("</d:multistatus>");
         resp.setStatus(207);
         resp.getWriter().write(xml.toString());
+
     }
 
     private String encodeHref(String uri) {

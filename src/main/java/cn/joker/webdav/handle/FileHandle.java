@@ -9,6 +9,13 @@ import java.util.List;
 public interface FileHandle {
 
     /**
+     * 路径是否存在
+     * @param path 资源路径
+     * @return
+     */
+    boolean hasPath(Path path);
+
+    /**
      * 文件列表
      * @param path 文件路径
      * @param uri 请求地址

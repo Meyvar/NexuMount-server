@@ -9,7 +9,7 @@ public class FileRessource {
 
     private String name;
 
-    private Integer size;
+    private Long size;
 
     private Date date;
 
