@@ -1,11 +1,12 @@
-package cn.joker.webdav.controller;
+package cn.joker.webdav.business.service.impl;
 
+import cn.joker.webdav.business.service.IWebDavService;
+import cn.joker.webdav.handle.FileHandle;
+import cn.joker.webdav.utils.RequestHolder;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,25 +20,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-@RestController
-public class WebDavController {
+@Service
+public class WebDavServiceImpl implements IWebDavService {
+
+    private FileHandle fileHandle;
 
     private static final String ROOT_DIR = "webdav";
 
-    @RequestMapping(value = "/**", method = RequestMethod.OPTIONS)
-    public void options(HttpServletResponse resp) {
-        handleOptions(resp);
-    }
 
-    @RequestMapping("/**")
-    public void handle(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    @Override
+    public void sendContent() throws IOException {
+        HttpServletRequest request = RequestHolder.getRequest();
+        HttpServletResponse response = RequestHolder.getResponse();
+
         String method = request.getMethod();
         String uri = URLDecoder.decode(request.getRequestURI(), StandardCharsets.UTF_8);
+
         Path path = Paths.get(ROOT_DIR, uri).normalize();
+
         response.setHeader("DAV", "1,2");
         response.setContentType("application/xml;charset=UTF-8");
 
         switch (method) {
+            case "OPTIONS" -> handleOptions(response);
             case "PROPFIND" -> handlePropFind(response, path, uri);
             case "GET" -> handleGet(response, path);
             case "PUT" -> handlePut(request, response, path);
@@ -49,6 +54,7 @@ public class WebDavController {
             default -> response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
         }
     }
+
 
     private void handleOptions(HttpServletResponse resp) {
         resp.setHeader("Allow", "OPTIONS, GET, PUT, DELETE, PROPFIND, MKCOL");
