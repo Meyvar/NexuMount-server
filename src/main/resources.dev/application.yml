@@ -1,0 +1,27 @@
+server:
+  port: 88
+
+spring:
+  profiles:
+    include: core
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:db/webdav.db
+    username: root
+    password: 123456
+
+# Sa-Token基础配置
+sa-token:
+  # token名称
+  token-name: Authorization-Key
+  # token有效期，单位s 开发环境设置较短
+  timeout: 86400
+  # token活跃有效期
+  active-timeout: 1800
+  # 是否允许同一账号并发登录
+  is-concurrent: true
+  # 是否输出操作日志
+  is-log: true
+  # jwt秘钥
+  jwt-secret-key: userKey

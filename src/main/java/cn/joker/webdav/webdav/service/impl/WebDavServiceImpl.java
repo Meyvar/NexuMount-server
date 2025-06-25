@@ -1,7 +1,7 @@
-package cn.joker.webdav.business.service.impl;
+package cn.joker.webdav.webdav.service.impl;
 
-import cn.joker.webdav.business.entity.FileRessource;
-import cn.joker.webdav.business.service.IWebDavService;
+import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.handle.FileHandle;
 import cn.joker.webdav.handle.SystemFileHandle;
 import cn.joker.webdav.utils.RequestHolder;
@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -35,7 +34,7 @@ public class WebDavServiceImpl implements IWebDavService {
     @Qualifier("rootHandle")
     private FileHandle rootHandle;
 
-    private static final String ROOT_DIR = "webdav";
+    private static final String ROOT_DIR = "webdav.db";
 
 
     @Override

@@ -1,4 +1,4 @@
-package cn.joker.webdav.business.entity;
+package cn.joker.webdav.webdav.entity;
 
 import lombok.Data;
 

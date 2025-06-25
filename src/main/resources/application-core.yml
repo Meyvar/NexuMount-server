@@ -1,0 +1,59 @@
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+      #        login-username: admin
+      #        login-password: admin
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: true
+      test-on-return: false
+      pool-prepared-statements: true
+      filters: stat,wall,slf4j
+      filter:
+        stat:
+          log-slow-sql: true
+      max-pool-prepared-statement-per-connection-size: 20
+      use-global-data-source-stat: true
+      connect-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+
+mybatis-plus:
+  mapper-locations: classpath:/mappers/**/*.xml
+  global-config:
+    db-config:
+      id-type: auto
+      table-underline: false
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+    banner: false
+  configuration:
+    map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Sa-Token基础配置
+sa-token:
+  # token风格
+  token-style: random-64
+  # 在多人登录同一账号时，是否共用一个token
+  is-share: false
+  # jwt基础配置
+  jwt:
+    # jwt存储数据类型
+    data-type: map
+    # jwt存储数据声明key
+    data-key: data

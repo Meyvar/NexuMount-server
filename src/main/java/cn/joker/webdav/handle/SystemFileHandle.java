@@ -1,6 +1,6 @@
 package cn.joker.webdav.handle;
 
-import cn.joker.webdav.business.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileRessource;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -19,7 +18,7 @@ public class SystemFileHandle implements FileHandle {
     @Override
     public boolean hasPath(Path path) {
 
-        String adapter = "/webdav";
+        String adapter = "/webdav.db";
 
 
         // 要替换的原始前缀路径
@@ -93,7 +92,7 @@ public class SystemFileHandle implements FileHandle {
         resp.setStatus(207);
         resp.getWriter().write(xml.toString());*/
 
-        String adapter = "webdav";
+        String adapter = "webdav.db";
 
 
         // 要替换的原始前缀路径

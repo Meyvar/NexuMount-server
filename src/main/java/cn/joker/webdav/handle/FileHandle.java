@@ -1,7 +1,6 @@
 package cn.joker.webdav.handle;
 
-import cn.joker.webdav.business.entity.FileRessource;
-import jakarta.servlet.http.HttpServletResponse;
+import cn.joker.webdav.webdav.entity.FileRessource;
 
 import java.nio.file.Path;
 import java.util.List;
