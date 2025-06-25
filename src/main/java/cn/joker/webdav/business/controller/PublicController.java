@@ -15,8 +15,8 @@ public class PublicController {
     private ISysUserService sysUserService;
 
     @RequestMapping("/login.do")
-    public Response<SysUser> login(String userName, String password){
-        return Response.success(sysUserService.login(userName, password));
+    public Response<SysUser> login(String username, String password){
+        return Response.success(sysUserService.login(username, password));
     }
 
 }

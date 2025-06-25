@@ -1,6 +1,7 @@
 package cn.joker.webdav.business.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.joker.webdav.business.entity.SysUser;
 import cn.joker.webdav.business.mapper.SysUserMapper;
 import cn.joker.webdav.business.service.ISysUserService;
@@ -15,6 +16,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     public SysUser login(String username, String password) {
+        password = DigestUtil.md5Hex(password);
+
         QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda().eq(SysUser::getUsername, username).eq(SysUser::getPassword, password);
 
