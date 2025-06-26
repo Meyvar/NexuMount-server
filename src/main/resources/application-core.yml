@@ -51,9 +51,3 @@ sa-token:
   token-style: random-64
   # 在多人登录同一账号时，是否共用一个token
   is-share: false
-  # jwt基础配置
-  jwt:
-    # jwt存储数据类型
-    data-type: map
-    # jwt存储数据声明key
-    data-key: data

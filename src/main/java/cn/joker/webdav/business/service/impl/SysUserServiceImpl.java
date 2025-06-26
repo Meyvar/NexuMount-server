@@ -1,6 +1,6 @@
 package cn.joker.webdav.business.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
+//import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.joker.webdav.business.entity.SysUser;
 import cn.joker.webdav.business.mapper.SysUserMapper;
@@ -31,7 +31,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         SysUser sysUser = userList.getFirst();
 
-        StpUtil.login(sysUser.getUuid());
+//        StpUtil.login(sysUser.getUuid());
 
         return sysUser;
     }
