@@ -10,6 +10,7 @@ import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -22,7 +23,7 @@ import java.util.List;
 public class RootAdapter implements IFileAdapter {
 
     @Override
-    public boolean hasPath(Path path) {
+    public boolean hasPath(String path) {
         return true;
     }
 
@@ -66,14 +67,12 @@ public class RootAdapter implements IFileAdapter {
             }
         });
 
-        list.addFirst(getFolderItself(fileBucket.getPath()));
-
         return list;
     }
 
     @Override
-    public void get(Path path) {
-
+    public InputStream get(String path) {
+        return null;
     }
 
     @Override

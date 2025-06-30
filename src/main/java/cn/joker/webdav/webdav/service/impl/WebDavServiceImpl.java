@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -57,7 +59,7 @@ public class WebDavServiceImpl implements IWebDavService {
         switch (method) {
             case "OPTIONS" -> handleOptions(response);
             case "PROPFIND" -> handlePropFind(response, path, uri);
-            case "GET" -> handleGet(response, path);
+            case "GET" -> handleGet(response, path, uri);
             case "PUT" -> handlePut(request, response, path);
             case "DELETE" -> handleDelete(response, path);
             case "MKCOL" -> handleMkcol(response, path);
@@ -80,7 +82,16 @@ public class WebDavServiceImpl implements IWebDavService {
 
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        List<FileResource> list = adapterManager.propFind();
+        List<FileResource> list = new ArrayList<>();
+
+        HttpServletRequest request = RequestHolder.getRequest();
+        String depth = request.getHeader("depth");
+        if ("0".equals(depth)) {
+            list.add(adapterManager.getFolderItself());
+        } else {
+            list = adapterManager.propFind();
+            list.addFirst(adapterManager.getFolderItself());
+        }
 
 
         StringBuilder xml = new StringBuilder();
@@ -88,9 +99,6 @@ public class WebDavServiceImpl implements IWebDavService {
         xml.append("<d:multistatus xmlns:cal=\"urn:ietf:params:xml:ns:caldav\" xmlns:cs=\"http://calendarserver.org/ns/\" xmlns:card=\"urn:ietf:params:xml:ns:carddav\" xmlns:d=\"DAV:\">");
 
 
-        if (list.isEmpty()) {
-
-        }
         for (FileResource resource : list) {
             if (resource == null) {
                 continue;
@@ -146,13 +154,17 @@ public class WebDavServiceImpl implements IWebDavService {
         return encoded.length() == 0 ? "/" : encoded.toString();
     }
 
-    private void handleGet(HttpServletResponse resp, Path path) throws IOException {
-        if (!Files.exists(path)) {
+    private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(path, uri);
+
+        if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
+
         resp.setStatus(HttpServletResponse.SC_OK);
-        Files.copy(path, resp.getOutputStream());
+        adapterManager.get().transferTo(resp.getOutputStream());
+//        Files.copy(adapterManager.get(), resp.getOutputStream());
     }
 
     private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path) throws IOException {

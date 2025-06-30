@@ -32,7 +32,8 @@ public class SaTokenConfigure implements WebMvcConfigurer {
 
                 String depth = req.getHeader("depth");
 
-                if (!StringUtils.hasText(sfd) || StringUtils.hasText(depth)) {
+                if (true) {
+//                if (!StringUtils.hasText(sfd) || StringUtils.hasText(depth)) {
                     try {
                         webDavService.sendContent();
                         SaRouter.back();

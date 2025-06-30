@@ -1,25 +1,23 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
-import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
-import cn.joker.webdav.webdav.adapter.trie.PathMatchResult;
-import cn.joker.webdav.webdav.adapter.trie.PathTrie;
 import cn.joker.webdav.webdav.entity.FileResource;
 import com.github.benmanes.caffeine.cache.Cache;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.Getter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.util.StringUtils;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class AdapterManager {
@@ -120,22 +118,11 @@ public class AdapterManager {
      * @return
      */
     public List<FileResource> propFind() {
-        HttpServletRequest request = RequestHolder.getRequest();
-        String depth = request.getHeader("depth");
-        if ("0".equals(depth)) {
-            return Collections.singletonList(getFolderItself());
-        }
-
-
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
             return adapter.propFind(fileBucket, uri);
         }
 
         List<FileResource> list = adapter.propFind(fileBucket, uri);
-
-        if (list.isEmpty()) {
-            list.add(getFolderItself());
-        }
 
         for (FileBucket bucket : fileBucketList) {
             FileResource resource = new FileResource();
@@ -154,10 +141,15 @@ public class AdapterManager {
 
             list.add(resource);
         }
-
-        list.addFirst(getFolderItself());
-
         return list;
+    }
+
+    public InputStream get() throws IOException {
+        return adapter.get(fileBucket.getSourcePath() + uri);
+    }
+
+    public boolean hasPath() {
+        return adapter.hasPath(fileBucket.getSourcePath() + uri);
     }
 
 }

@@ -8,10 +8,10 @@ import cn.joker.webdav.webdav.entity.FileResource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -20,8 +20,8 @@ import java.util.List;
 public class SystemFileAdapter implements IFileAdapter {
 
     @Override
-    public boolean hasPath(Path path) {
-        File file = path.toFile();
+    public boolean hasPath(String path) {
+        File file = new  File(path);
         return file.exists();
     }
 
@@ -82,8 +82,10 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void get(Path path) {
-
+    public InputStream get(String path) throws IOException {
+        Path p = Paths.get(path);
+        InputStream in = Files.newInputStream(p);
+        return in;
     }
 
     @Override
