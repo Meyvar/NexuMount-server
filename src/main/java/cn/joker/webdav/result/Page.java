@@ -1,4 +1,4 @@
-package cn.joker.webdav.business.result;
+package cn.joker.webdav.result;
 
 public class Page<T> extends com.baomidou.mybatisplus.extension.plugins.pagination.Page<T> {
 

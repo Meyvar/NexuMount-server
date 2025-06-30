@@ -1,4 +1,4 @@
-package cn.joker.webdav.business.result;
+package cn.joker.webdav.result;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -19,6 +19,12 @@ public class Response<T> {
      * 未登录
      */
     public static final int NO_LOGIN = 401;
+
+
+    /**
+     * 权限不足
+     */
+    public static final int NO_PERMISSIONS = 403;
 
     /**
      * 请求状态码

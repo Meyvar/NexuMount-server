@@ -1,6 +1,8 @@
 package cn.joker.webdav.config;
 
-import cn.joker.webdav.business.result.Response;
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.joker.webdav.result.Response;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -23,7 +25,13 @@ public class GlobalExceptionHandler {
             msg = "服务方法出错！";
         }
         Response<String> response = Response.error(msg);
-        response.setCode(Response.CODE_ERROR);
+        if (e instanceof NotLoginException){
+            response.setCode(Response.NO_LOGIN);
+        }else if (e instanceof NotPermissionException){
+            response.setCode(Response.NO_PERMISSIONS);
+        }else{
+            response.setCode(Response.CODE_ERROR);
+        }
         return response;
     }
 

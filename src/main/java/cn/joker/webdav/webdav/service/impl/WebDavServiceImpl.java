@@ -1,5 +1,6 @@
 package cn.joker.webdav.webdav.service.impl;
 
+import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileRessource;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.handle.FileHandle;
@@ -31,11 +32,7 @@ public class WebDavServiceImpl implements IWebDavService {
     private FileHandle fileHandle = new SystemFileHandle();
 
     @Autowired
-    @Qualifier("rootHandle")
     private FileHandle rootHandle;
-
-    private static final String ROOT_DIR = "webdav.db";
-
 
     @Override
     public void sendContent() throws IOException {
@@ -45,7 +42,14 @@ public class WebDavServiceImpl implements IWebDavService {
         String method = request.getMethod();
         String uri = URLDecoder.decode(request.getRequestURI(), StandardCharsets.UTF_8);
 
+        if (uri != null && uri.matches(".*/\\._.*")) {
+            response.setStatus(404);
+            return;
+        }
+
         Path path = Paths.get(uri).normalize();
+
+        System.out.println("uri: " + uri + "  path:" + path);
 
         response.setHeader("DAV", "1,2");
         response.setContentType("application/xml;charset=UTF-8");
@@ -74,27 +78,18 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handlePropFind(HttpServletResponse resp, Path path, String uri) throws IOException {
 
-        List<FileRessource> list = null;
+        AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        if ("/".equals(path.toString()) || "\\".equals(path.toString()) || path.toString().isEmpty()) {
-            list = rootHandle.handlePropFind(path, uri);
-        } else {
-            if (!fileHandle.hasPath(path)) {
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            } else {
-                list = fileHandle.handlePropFind(path, uri);
-            }
-        }
+        List<FileRessource> list = adapterManager.propFind();
 
         /**
          * 文件路径本身
          */
-        FileRessource fileRessource = new FileRessource();
-        fileRessource.setType("folder");
-        fileRessource.setName(uri);
-        fileRessource.setSize(0L);
-        fileRessource.setDate(new Date());
+        FileRessource fileRessource = adapterManager.getFolderItself();
+//        fileRessource.setType("folder");
+//        fileRessource.setName(uri);
+//        fileRessource.setSize(0L);
+//        fileRessource.setDate(new Date());
         list.addFirst(fileRessource);
 
 
@@ -111,7 +106,13 @@ public class WebDavServiceImpl implements IWebDavService {
 
             String name = ressource.getName();
 
-            String fullPath = uri.endsWith("/") ? uri + name : uri + "/" + name;
+            String fullPath = uri;
+
+            if (!"/".equals(name)){
+                fullPath += name;
+            }
+
+
 
             if (ressource.getType().equals("folder") && !fullPath.endsWith("/")) {
                 fullPath += "/";
@@ -255,7 +256,7 @@ public class WebDavServiceImpl implements IWebDavService {
         URI destUriObj = URI.create(destHeader);
         String destPathRaw = destUriObj.getPath();
 
-        Path destPath = Paths.get(ROOT_DIR, URLDecoder.decode(destPathRaw, StandardCharsets.UTF_8)).normalize();
+        Path destPath = Paths.get("ROOT_DIR", URLDecoder.decode(destPathRaw, StandardCharsets.UTF_8)).normalize();
 
         System.out.println("MOVE: " + sourcePath + " → " + destPath);
 
