@@ -1,7 +1,7 @@
 package cn.joker.webdav.handle;
 
 
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -17,13 +17,13 @@ public class RootHandle implements FileHandle {
     }
 
     @Override
-    public List<FileRessource> handlePropFind(Path path, String uri) {
-        FileRessource fileRessource = new FileRessource();
+    public List<FileResource> handlePropFind(Path path, String uri) {
+        FileResource fileRessource = new FileResource();
         fileRessource.setType("folder");
         fileRessource.setName("本地路径");
         fileRessource.setSize(0L);
         fileRessource.setDate(new Date());
-        List<FileRessource>  list = new ArrayList<>();
+        List<FileResource>  list = new ArrayList<>();
         list.add(fileRessource);
         return list;
     }

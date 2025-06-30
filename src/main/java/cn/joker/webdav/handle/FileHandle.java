@@ -1,6 +1,6 @@
 package cn.joker.webdav.handle;
 
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -20,7 +20,7 @@ public interface FileHandle {
      * @param uri 请求地址
      * @return 文件list
      */
-    List<FileRessource> handlePropFind(Path path, String uri);
+    List<FileResource> handlePropFind(Path path, String uri);
 
     /**
      * 获取资源

@@ -1,6 +1,6 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -22,7 +22,7 @@ public interface IFileAdapter {
      *
      * @return
      */
-    FileRessource getFolderItself(String path);
+    FileResource getFolderItself(String path);
 
     /**
      * 文件列表
@@ -31,7 +31,7 @@ public interface IFileAdapter {
      * @param uri  请求地址
      * @return 文件list
      */
-    List<FileRessource> propFind(String path, String uri);
+    List<FileResource> propFind(String path, String uri);
 
     /**
      * 获取资源

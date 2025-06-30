@@ -1,8 +1,11 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,31 +20,48 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public boolean hasPath(Path path) {
-        return false;
+        File file = path.toFile();
+        return file.exists();
     }
 
     @Override
-    public FileRessource getFolderItself(String path) {
+    public FileResource getFolderItself(String path) {
         File file = new File(path);
-        FileRessource fileRessource = new FileRessource();
-        fileRessource.setType("folder");
-        fileRessource.setName(path);
-        fileRessource.setSize(0L);
-        fileRessource.setDate(new Date(file.lastModified()));
-        return fileRessource;
+        FileResource fileResource = new FileResource();
+        fileResource.setType("folder");
+        fileResource.setSize(0L);
+        fileResource.setDate(new Date(file.lastModified()));
+        fileResource.setHref(path);
+
+        path = path.substring(0, path.length() - 1);
+
+        String[] paths = path.split("/");
+
+        if (paths.length > 0) {
+            fileResource.setName(paths[paths.length - 1]);
+        }
+
+        return fileResource;
     }
 
     @Override
-    public List<FileRessource> propFind(String path, String uri) {
+    public List<FileResource> propFind(String path, String uri) {
+
+//        if (!hasPath(Path.of(path + uri))) {
+//            HttpServletResponse response = RequestHolder.getResponse();
+//            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+//            return null;
+//        }
+
         Path filePath = Path.of(path + uri);
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
 
-        List<FileRessource> list = new ArrayList<>();
+        List<FileResource> list = new ArrayList<>();
 
         if (files != null) {
             for (File f : files) {
-                FileRessource ressource = new FileRessource();
+                FileResource ressource = new FileResource();
 
                 ressource.setType(f.isDirectory() ? "folder" : "file");
                 ressource.setName(f.getName());
@@ -52,7 +72,7 @@ public class SystemFileAdapter implements IFileAdapter {
                 }
 
                 ressource.setSize(f.isDirectory() ? 0L : f.length());
-
+                ressource.setHref(path + uri + f.getName());
                 list.add(ressource);
             }
         }

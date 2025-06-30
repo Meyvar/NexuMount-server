@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-public class FileRessource {
+public class FileResource {
 
     private String name;
 
@@ -14,5 +14,7 @@ public class FileRessource {
     private Date date;
 
     private String type;
+
+    private String href;
 
 }

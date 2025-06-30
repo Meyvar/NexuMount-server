@@ -1,12 +1,14 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
 import cn.joker.webdav.webdav.adapter.trie.PathMatchResult;
 import cn.joker.webdav.webdav.adapter.trie.PathTrie;
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 import com.github.benmanes.caffeine.cache.Cache;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -17,6 +19,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class AdapterManager {
@@ -59,17 +62,14 @@ public class AdapterManager {
         List<FileBucket> list = new ArrayList<>();
 
 
-
         nativeCache.asMap().forEach((key, value) -> {
             FileBucket fileBucket = (FileBucket) value;
             list.add(fileBucket);
         });
 
-        PathMatchResult result = FileBucketPathUtils.matchSelfAndDirectChildren(path.toString(), list);
 
-
-        fileBucket = FileBucketPathUtils.findLongestPrefix(path.toString(), list);
-        fileBucketList = FileBucketPathUtils.findDirectChildren(path.toString(), list);
+        fileBucket = FileBucketPathUtils.findLongestPrefix(uri, list);
+        fileBucketList = FileBucketPathUtils.findDirectChildren(uri, list);
 
         this.uri = uri.replaceAll(fileBucket.getPath(), "");
         this.path = Path.of(this.uri);
@@ -81,19 +81,24 @@ public class AdapterManager {
         adapter = SprintContextUtil.getBean(fileBucket.getAdapter(), IFileAdapter.class);
     }
 
-    public FileRessource getFolderItself() {
-        FileRessource fileRessource = new FileRessource();
-        fileRessource.setType("folder");
-        fileRessource.setSize(0L);
+    /**
+     * 文件夹自身
+     *
+     * @return
+     */
+    public FileResource getFolderItself() {
+        FileResource fileResource = new FileResource();
+        fileResource.setType("folder");
+        fileResource.setSize(0L);
 
 
         try {
             if (fileBucket.getPath().equals(this.uri)) {
-                fileRessource.setDate(format.parse(fileBucket.getUpdateTime()));
+                fileResource.setDate(format.parse(fileBucket.getUpdateTime()));
             } else {
                 for (FileBucket bucket : fileBucketList) {
                     if (bucket.getPath().equals(this.uri)) {
-                        fileRessource.setDate(format.parse(bucket.getUpdateTime()));
+                        fileResource.setDate(format.parse(bucket.getUpdateTime()));
                         break;
                     }
                 }
@@ -101,40 +106,55 @@ public class AdapterManager {
         } catch (Exception e) {
 //            e.printStackTrace();
         }
+        fileResource.setName(this.uri);
 
-        if (fileRessource.getDate() == null) {
-            fileRessource = adapter.getFolderItself(fileBucket.getSourcePath() + this.path.toString().replace(fileBucket.getPath(), ""));
+        if (fileResource.getDate() == null) {
+            fileResource = adapter.getFolderItself(fileBucket.getSourcePath() + uri);
         }
-        fileRessource.setName(this.uri);
-        return fileRessource;
+        return fileResource;
     }
 
-    public List<FileRessource> propFind() {
+    /**
+     * ？获取文件列表
+     *
+     * @return
+     */
+    public List<FileResource> propFind() {
+        HttpServletRequest request = RequestHolder.getRequest();
+        String depth = request.getHeader("depth");
+        if ("0".equals(depth)) {
+            return Collections.singletonList(getFolderItself());
+        }
+
+
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
             return adapter.propFind(path.toString(), uri);
         }
 
-        List<FileRessource> list = adapter.propFind(fileBucket.getSourcePath(), uri);
+        List<FileResource> list = adapter.propFind(fileBucket.getSourcePath(), uri);
+
+        if (list.isEmpty()) {
+            list.add(getFolderItself());
+        }
 
         for (FileBucket bucket : fileBucketList) {
-            FileRessource ressource = new FileRessource();
-            ressource.setType("folder");
+            FileResource resource = new FileResource();
+            resource.setType("folder");
 
             try {
-                ressource.setDate(format.parse(bucket.getUpdateTime()));
+                resource.setDate(format.parse(bucket.getUpdateTime()));
             } catch (ParseException e) {
                 throw new RuntimeException(e);
             }
 
-            String path = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
+            String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
+            resource.setName(name);
 
-            String[] paths = path.split("/");
+            resource.setHref(bucket.getPath().replace(this.fileBucket.getPath(), ""));
 
-            if (paths.length > 0 && StringUtils.hasText(paths[0])) {
-                ressource.setName(path);
-                list.add(ressource);
-            }
+            list.add(resource);
         }
+
         return list;
     }
 

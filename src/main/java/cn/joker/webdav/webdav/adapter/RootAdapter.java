@@ -3,7 +3,7 @@ package cn.joker.webdav.webdav.adapter;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -27,39 +27,42 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public FileRessource getFolderItself(String path) {
-        FileRessource fileRessource = new FileRessource();
-        fileRessource.setType("folder");
-        fileRessource.setName(path);
-        fileRessource.setSize(0L);
-        fileRessource.setDate(new Date());
-        return fileRessource;
+    public FileResource getFolderItself(String path) {
+        FileResource fileResource = new FileResource();
+        fileResource.setType("folder");
+        fileResource.setName("");
+        fileResource.setSize(0L);
+        fileResource.setDate(new Date());
+        fileResource.setHref(path);
+        return fileResource;
     }
 
     @Override
-    public List<FileRessource> propFind(String path, String uri) {
+    public List<FileResource> propFind(String path, String uri) {
         CacheManager cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
         Cache<Object, Object> nativeCache = ((CaffeineCache) cacheManager.getCache("fileBucketList")).getNativeCache();
 
 
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-        List<FileRessource> list = new ArrayList<>();
+        List<FileResource> list = new ArrayList<>();
         nativeCache.asMap().forEach((key, value) -> {
             FileBucket fileBucket = (FileBucket) value;
 
             String mountPath = (String) key;
             mountPath = mountPath.substring(1);
             if (!mountPath.contains("/") && StringUtils.hasText(mountPath)){
-                FileRessource ressource = new FileRessource();
-                ressource.setName(mountPath);
-                ressource.setType("folder");
+                FileResource resource = new FileResource();
+                resource.setName(mountPath);
+                resource.setHref("webdav/" + mountPath);
+                resource.setSize(0L);
+                resource.setType("folder");
                 try {
-                    ressource.setDate(format.parse(fileBucket.getUpdateTime()));
+                    resource.setDate(format.parse(fileBucket.getUpdateTime()));
                 } catch (ParseException e) {
                     throw new RuntimeException(e);
                 }
-                list.add(ressource);
+                list.add(resource);
             }
         });
 

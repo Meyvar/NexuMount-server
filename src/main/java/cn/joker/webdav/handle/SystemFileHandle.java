@@ -1,6 +1,6 @@
 package cn.joker.webdav.handle;
 
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -37,7 +37,7 @@ public class SystemFileHandle implements FileHandle {
     }
 
     @Override
-    public List<FileRessource> handlePropFind(Path path, String uri) {
+    public List<FileResource> handlePropFind(Path path, String uri) {
 
 /*        StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -112,10 +112,10 @@ public class SystemFileHandle implements FileHandle {
         File file = path.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
 
-        List<FileRessource> list = new ArrayList<>();
+        List<FileResource> list = new ArrayList<>();
 
         for (File f : files) {
-            FileRessource ressource = new FileRessource();
+            FileResource ressource = new FileResource();
 
             ressource.setType(f.isDirectory() ? "folder" : "file");
             ressource.setName(f.getName());

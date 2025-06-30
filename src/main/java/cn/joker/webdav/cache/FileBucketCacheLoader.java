@@ -41,6 +41,7 @@ public class FileBucketCacheLoader implements ApplicationRunner {
             FileBucket root = new FileBucket();
             root.setPath("/");
             root.setAdapter("rootAdapter");
+            root.setSourcePath("");
             bucketList.add(root);
         }
 

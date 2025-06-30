@@ -1,7 +1,7 @@
 package cn.joker.webdav.webdav.service.impl;
 
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
-import cn.joker.webdav.webdav.entity.FileRessource;
+import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.handle.FileHandle;
 import cn.joker.webdav.handle.SystemFileHandle;
@@ -80,17 +80,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        List<FileRessource> list = adapterManager.propFind();
-
-        /**
-         * 文件路径本身
-         */
-        FileRessource fileRessource = adapterManager.getFolderItself();
-//        fileRessource.setType("folder");
-//        fileRessource.setName(uri);
-//        fileRessource.setSize(0L);
-//        fileRessource.setDate(new Date());
-        list.addFirst(fileRessource);
+        List<FileResource> list = adapterManager.propFind();
 
 
         StringBuilder xml = new StringBuilder();
@@ -98,39 +88,33 @@ public class WebDavServiceImpl implements IWebDavService {
         xml.append("<d:multistatus xmlns:cal=\"urn:ietf:params:xml:ns:caldav\" xmlns:cs=\"http://calendarserver.org/ns/\" xmlns:card=\"urn:ietf:params:xml:ns:carddav\" xmlns:d=\"DAV:\">");
 
 
-        for (FileRessource ressource : list) {
-            if (ressource == null) {
+        if (list.isEmpty()) {
+
+        }
+        for (FileResource resource : list) {
+            if (resource == null) {
                 continue;
             }
 
+            String fullPath = resource.getHref();
 
-            String name = ressource.getName();
-
-            String fullPath = uri;
-
-            if (!"/".equals(name)){
-                fullPath += name;
-            }
-
-
-
-            if (ressource.getType().equals("folder") && !fullPath.endsWith("/")) {
+            if (resource.getType().equals("folder") && !fullPath.endsWith("/")) {
                 fullPath += "/";
             }
 
             xml.append("<d:response> ");
             xml.append("<d:href>").append(encodeHref(fullPath)).append("</d:href> ");
             xml.append("<d:propstat> <d:prop> ");
-            xml.append("<d:resourcetype>").append("folder".equals(ressource.getType()) ? "<d:collection/>" : "").append("</d:resourcetype> ");
-            xml.append("<d:getcontentlength>").append(ressource.getSize()).append("</d:getcontentlength> ");
+            xml.append("<d:resourcetype>").append("folder".equals(resource.getType()) ? "<d:collection/>" : "").append("</d:resourcetype> ");
+            xml.append("<d:getcontentlength>").append(resource.getSize()).append("</d:getcontentlength> ");
             xml.append("<d:getlastmodified>").append(
-                    ressource.getDate()
+                    resource.getDate()
                             .toInstant()
                             .atZone(java.time.ZoneOffset.UTC)
                             .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
             ).append("</d:getlastmodified>");
 
-            String safeDisplayName = ressource.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+            String safeDisplayName = resource.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 
             xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
             xml.append("</d:prop> <d:status>HTTP/1.1 200 OK</d:status> </d:propstat> ");

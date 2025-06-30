@@ -30,7 +30,9 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                 HttpServletRequest req = RequestHolder.getRequest();
                 String sfd = req.getHeader("sec-fetch-dest");
 
-                if (!StringUtils.hasText(sfd)) {
+                String depth = req.getHeader("depth");
+
+                if (!StringUtils.hasText(sfd) || StringUtils.hasText(depth)) {
                     try {
                         webDavService.sendContent();
                         SaRouter.back();
