@@ -38,7 +38,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public List<FileResource> propFind(String path, String uri) {
+    public List<FileResource> propFind(FileBucket fileBucket, String uri) {
         CacheManager cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
         Cache<Object, Object> nativeCache = ((CaffeineCache) cacheManager.getCache("fileBucketList")).getNativeCache();
 
@@ -47,7 +47,7 @@ public class RootAdapter implements IFileAdapter {
 
         List<FileResource> list = new ArrayList<>();
         nativeCache.asMap().forEach((key, value) -> {
-            FileBucket fileBucket = (FileBucket) value;
+            FileBucket bucket = (FileBucket) value;
 
             String mountPath = (String) key;
             mountPath = mountPath.substring(1);
@@ -58,13 +58,15 @@ public class RootAdapter implements IFileAdapter {
                 resource.setSize(0L);
                 resource.setType("folder");
                 try {
-                    resource.setDate(format.parse(fileBucket.getUpdateTime()));
+                    resource.setDate(format.parse(bucket.getUpdateTime()));
                 } catch (ParseException e) {
                     throw new RuntimeException(e);
                 }
                 list.add(resource);
             }
         });
+
+        list.addFirst(getFolderItself(fileBucket.getPath()));
 
         return list;
     }

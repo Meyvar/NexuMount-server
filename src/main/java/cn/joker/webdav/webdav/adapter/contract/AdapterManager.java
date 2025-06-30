@@ -18,8 +18,8 @@ import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class AdapterManager {
@@ -109,7 +109,7 @@ public class AdapterManager {
         fileResource.setName(this.uri);
 
         if (fileResource.getDate() == null) {
-            fileResource = adapter.getFolderItself(fileBucket.getSourcePath() + uri);
+            fileResource = adapter.getFolderItself(fileBucket.getPath() + uri);
         }
         return fileResource;
     }
@@ -128,10 +128,10 @@ public class AdapterManager {
 
 
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
-            return adapter.propFind(path.toString(), uri);
+            return adapter.propFind(fileBucket, uri);
         }
 
-        List<FileResource> list = adapter.propFind(fileBucket.getSourcePath(), uri);
+        List<FileResource> list = adapter.propFind(fileBucket, uri);
 
         if (list.isEmpty()) {
             list.add(getFolderItself());
@@ -154,6 +154,8 @@ public class AdapterManager {
 
             list.add(resource);
         }
+
+        list.addFirst(getFolderItself());
 
         return list;
     }

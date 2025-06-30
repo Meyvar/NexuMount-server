@@ -1,5 +1,6 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
@@ -45,7 +46,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public List<FileResource> propFind(String path, String uri) {
+    public List<FileResource> propFind(FileBucket fileBucket, String uri) {
 
 //        if (!hasPath(Path.of(path + uri))) {
 //            HttpServletResponse response = RequestHolder.getResponse();
@@ -53,7 +54,7 @@ public class SystemFileAdapter implements IFileAdapter {
 //            return null;
 //        }
 
-        Path filePath = Path.of(path + uri);
+        Path filePath = Path.of(fileBucket.getSourcePath() + uri);
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
 
@@ -72,7 +73,7 @@ public class SystemFileAdapter implements IFileAdapter {
                 }
 
                 ressource.setSize(f.isDirectory() ? 0L : f.length());
-                ressource.setHref(path + uri + f.getName());
+                ressource.setHref(fileBucket.getPath() + uri + f.getName());
                 list.add(ressource);
             }
         }

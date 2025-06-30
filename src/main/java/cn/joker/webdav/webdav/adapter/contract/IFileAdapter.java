@@ -1,5 +1,6 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
+import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.webdav.entity.FileResource;
 
 import java.nio.file.Path;
@@ -31,7 +32,7 @@ public interface IFileAdapter {
      * @param uri  请求地址
      * @return 文件list
      */
-    List<FileResource> propFind(String path, String uri);
+    List<FileResource> propFind(FileBucket fileBucket, String uri);
 
     /**
      * 获取资源
