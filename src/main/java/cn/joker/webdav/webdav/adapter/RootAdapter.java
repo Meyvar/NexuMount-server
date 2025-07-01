@@ -28,13 +28,13 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public FileResource getFolderItself(String path) {
+    public FileResource getFolderItself(FileBucket fileBucket, String uri) {
         FileResource fileResource = new FileResource();
         fileResource.setType("folder");
         fileResource.setName("");
         fileResource.setSize(0L);
         fileResource.setDate(new Date());
-        fileResource.setHref(path);
+        fileResource.setHref(uri);
         return fileResource;
     }
 
@@ -55,7 +55,7 @@ public class RootAdapter implements IFileAdapter {
             if (!mountPath.contains("/") && StringUtils.hasText(mountPath)){
                 FileResource resource = new FileResource();
                 resource.setName(mountPath);
-                resource.setHref("webdav/" + mountPath);
+                resource.setHref(mountPath);
                 resource.setSize(0L);
                 resource.setType("folder");
                 try {
@@ -76,17 +76,17 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(Path path) {
+    public void put(String path) {
 
     }
 
     @Override
-    public void delete(Path path) {
+    public void delete(String path) {
 
     }
 
     @Override
-    public void mkcol(Path path) {
+    public void mkcol(String path) {
 
     }
 

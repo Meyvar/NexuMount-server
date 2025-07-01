@@ -3,14 +3,10 @@ package cn.joker.webdav.webdav.service.impl;
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.service.IWebDavService;
-import cn.joker.webdav.handle.FileHandle;
-import cn.joker.webdav.handle.SystemFileHandle;
 import cn.joker.webdav.utils.RequestHolder;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -24,17 +20,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 @Service
 public class WebDavServiceImpl implements IWebDavService {
-
-    private FileHandle fileHandle = new SystemFileHandle();
-
-    @Autowired
-    private FileHandle rootHandle;
 
     @Override
     public void sendContent() throws IOException {
@@ -60,9 +49,9 @@ public class WebDavServiceImpl implements IWebDavService {
             case "OPTIONS" -> handleOptions(response);
             case "PROPFIND" -> handlePropFind(response, path, uri);
             case "GET" -> handleGet(response, path, uri);
-            case "PUT" -> handlePut(request, response, path);
-            case "DELETE" -> handleDelete(response, path);
-            case "MKCOL" -> handleMkcol(response, path);
+            case "PUT" -> handlePut(request, response, path, uri);
+            case "DELETE" -> handleDelete(response, path, uri);
+            case "MKCOL" -> handleMkcol(response, path, uri);
             case "LOCK" -> handleLock(request, response, path);
             case "UNLOCK" -> handleUnlock(request, response, path);
             case "MOVE" -> handleMove(request, response, path);
@@ -86,11 +75,11 @@ public class WebDavServiceImpl implements IWebDavService {
 
         HttpServletRequest request = RequestHolder.getRequest();
         String depth = request.getHeader("depth");
-        if ("0".equals(depth)) {
-            list.add(adapterManager.getFolderItself());
-        } else {
-            list = adapterManager.propFind();
-            list.addFirst(adapterManager.getFolderItself());
+
+        list.add(adapterManager.getFolderItself());
+
+        if ("1".equals(depth)) {
+            list.addAll(adapterManager.propFind());
         }
 
 
@@ -129,12 +118,13 @@ public class WebDavServiceImpl implements IWebDavService {
             xml.append("</d:response> ");
 
         }
-
-
         xml.append("</d:multistatus>");
+
+
+        byte[] data = xml.toString().getBytes(StandardCharsets.UTF_8);
+        resp.setContentLength(data.length);
         resp.setStatus(207);
         resp.getWriter().write(xml.toString());
-
     }
 
     private String encodeHref(String uri) {
@@ -164,51 +154,35 @@ public class WebDavServiceImpl implements IWebDavService {
 
         resp.setStatus(HttpServletResponse.SC_OK);
         adapterManager.get().transferTo(resp.getOutputStream());
-//        Files.copy(adapterManager.get(), resp.getOutputStream());
     }
 
-    private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path) throws IOException {
-        long contentLength = req.getContentLengthLong();
-        System.out.println("PUT: " + path + ", content-length: " + contentLength);
-
-        Files.createDirectories(path.getParent());
-
-        try (ServletInputStream input = req.getInputStream();
-             OutputStream output = Files.newOutputStream(path)) {
-
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            long total = 0;
-
-            while ((bytesRead = input.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
-                total += bytesRead;
-            }
-
-            output.flush();
-            System.out.println("Wrote " + total + " bytes to file.");
-        }
-
+    private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(path, uri);
+        adapterManager.put();
         // 响应
         resp.setStatus(HttpServletResponse.SC_CREATED);
     }
 
 
-    private void handleDelete(HttpServletResponse resp, Path path) throws IOException {
-        if (!Files.exists(path)) {
+    private void handleDelete(HttpServletResponse resp, Path path, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(path, uri);
+
+        if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-        Files.delete(path);
+        adapterManager.delete();
         resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
-    private void handleMkcol(HttpServletResponse resp, Path path) throws IOException {
-        if (Files.exists(path)) {
+    private void handleMkcol(HttpServletResponse resp, Path path, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(path, uri);
+
+        if (adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
-        Files.createDirectories(path);
+        adapterManager.mkcol();
         resp.setStatus(HttpServletResponse.SC_CREATED);
     }
 

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class AdapterManager {
@@ -92,7 +93,10 @@ public class AdapterManager {
 
         try {
             if (fileBucket.getPath().equals(this.uri)) {
-                fileResource.setDate(format.parse(fileBucket.getUpdateTime()));
+                String updateTime = fileBucket.getUpdateTime();
+                if (StringUtils.hasText(updateTime)) {
+                    fileResource.setDate(format.parse(updateTime));
+                }
             } else {
                 for (FileBucket bucket : fileBucketList) {
                     if (bucket.getPath().equals(this.uri)) {
@@ -102,12 +106,12 @@ public class AdapterManager {
                 }
             }
         } catch (Exception e) {
-//            e.printStackTrace();
+            e.printStackTrace();
         }
         fileResource.setName(this.uri);
 
         if (fileResource.getDate() == null) {
-            fileResource = adapter.getFolderItself(fileBucket.getPath() + uri);
+            fileResource = adapter.getFolderItself(fileBucket, uri);
         }
         return fileResource;
     }
@@ -137,7 +141,9 @@ public class AdapterManager {
             String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
             resource.setName(name);
 
-            resource.setHref(bucket.getPath().replace(this.fileBucket.getPath(), ""));
+            resource.setHref(bucket.getPath());
+
+            resource.setSize(0L);
 
             list.add(resource);
         }
@@ -152,4 +158,15 @@ public class AdapterManager {
         return adapter.hasPath(fileBucket.getSourcePath() + uri);
     }
 
+    public void mkcol() throws IOException {
+        adapter.mkcol(fileBucket.getSourcePath() + uri);
+    }
+
+    public void delete() throws IOException {
+        adapter.delete(fileBucket.getSourcePath() + uri);
+    }
+
+    public void put() throws IOException {
+        adapter.put(fileBucket.getSourcePath() + uri);
+    }
 }

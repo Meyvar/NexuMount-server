@@ -5,6 +5,7 @@ import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -21,19 +22,28 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public boolean hasPath(String path) {
-        File file = new  File(path);
+        File file = new File(path);
         return file.exists();
     }
 
     @Override
-    public FileResource getFolderItself(String path) {
-        File file = new File(path);
+    public FileResource getFolderItself(FileBucket fileBucket, String uri) {
+        File file = new File(fileBucket.getSourcePath() + uri);
         FileResource fileResource = new FileResource();
-        fileResource.setType("folder");
-        fileResource.setSize(0L);
-        fileResource.setDate(new Date(file.lastModified()));
-        fileResource.setHref(path);
 
+        if (file.isDirectory()) {
+            fileResource.setType("folder");
+            fileResource.setSize(0L);
+        } else {
+            fileResource.setType("file");
+            fileResource.setSize(file.length());
+        }
+
+
+        fileResource.setDate(new Date(file.lastModified()));
+        fileResource.setHref(fileBucket.getPath() + uri);
+
+        String path = fileBucket.getPath() + uri;
         path = path.substring(0, path.length() - 1);
 
         String[] paths = path.split("/");
@@ -89,18 +99,38 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(Path path) {
+    public void put(String path) throws IOException {
+        HttpServletRequest req = RequestHolder.getRequest();
+        long contentLength = req.getContentLengthLong();
+        System.out.println("PUT: " + path + ", content-length: " + contentLength);
 
+        Files.createDirectories(Paths.get(path).getParent());
+
+        try (ServletInputStream input = req.getInputStream();
+             OutputStream output = Files.newOutputStream(Paths.get(path))) {
+
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            long total = 0;
+
+            while ((bytesRead = input.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
+                total += bytesRead;
+            }
+
+            output.flush();
+            System.out.println("Wrote " + total + " bytes to file.");
+        }
     }
 
     @Override
-    public void delete(Path path) {
-
+    public void delete(String path) throws IOException {
+        Files.delete(Paths.get(path));
     }
 
     @Override
-    public void mkcol(Path path) {
-
+    public void mkcol(String path) throws IOException {
+        Files.createDirectories(Paths.get(path));
     }
 
     @Override

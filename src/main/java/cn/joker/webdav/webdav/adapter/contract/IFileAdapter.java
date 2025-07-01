@@ -26,7 +26,7 @@ public interface IFileAdapter {
      *
      * @return
      */
-    FileResource getFolderItself(String path);
+    FileResource getFolderItself(FileBucket fileBucket, String uri);
 
     /**
      * 文件列表
@@ -49,21 +49,21 @@ public interface IFileAdapter {
      *
      * @param path 上传路径
      */
-    void put(Path path);
+    void put(String path) throws IOException;
 
     /**
      * 删除资源
      *
      * @param path 删除路径
      */
-    void delete(Path path);
+    void delete(String path) throws IOException;
 
     /**
      * 创建文件夹
      *
      * @param path 创建路径
      */
-    void mkcol(Path path);
+    void mkcol(String path) throws IOException;
 
     /**
      * 移动资源
