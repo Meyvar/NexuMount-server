@@ -40,7 +40,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
         Path path = Paths.get(uri).normalize();
 
-        System.out.println("uri: " + uri + "  path:" + path);
+        System.out.println(method + "  uri: " + uri + "  path:" + path);
 
         response.setHeader("DAV", "1,2");
         response.setContentType("application/xml;charset=UTF-8");
@@ -54,7 +54,8 @@ public class WebDavServiceImpl implements IWebDavService {
             case "MKCOL" -> handleMkcol(response, path, uri);
             case "LOCK" -> handleLock(request, response, path);
             case "UNLOCK" -> handleUnlock(request, response, path);
-            case "MOVE" -> handleMove(request, response, path);
+            case "MOVE" -> handleMove(request, response, path, uri);
+            case "COPY" -> handleCopy(response, path, uri);
             default -> response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
         }
     }
@@ -215,39 +216,15 @@ public class WebDavServiceImpl implements IWebDavService {
         resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
-    private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath) throws IOException {
-        String destHeader = req.getHeader("Destination");
+    private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
+        adapterManager.move();
+        resp.setStatus(HttpServletResponse.SC_CREATED);
+    }
 
-        if (destHeader == null || !destHeader.startsWith("http")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-
-        URI destUriObj = URI.create(destHeader);
-        String destPathRaw = destUriObj.getPath();
-
-        Path destPath = Paths.get("ROOT_DIR", URLDecoder.decode(destPathRaw, StandardCharsets.UTF_8)).normalize();
-
-        System.out.println("MOVE: " + sourcePath + " → " + destPath);
-
-        if (!Files.exists(sourcePath)) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        Files.createDirectories(destPath.getParent());
-
-        boolean overwrite = !"F".equalsIgnoreCase(req.getHeader("Overwrite"));
-        if (Files.exists(destPath)) {
-            if (overwrite) {
-                Files.delete(destPath);
-            } else {
-                resp.setStatus(HttpServletResponse.SC_PRECONDITION_FAILED);
-                return;
-            }
-        }
-
-        Files.move(sourcePath, destPath);
+    private void handleCopy(HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
+        AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
+        adapterManager.copy();
         resp.setStatus(HttpServletResponse.SC_CREATED);
     }
 }

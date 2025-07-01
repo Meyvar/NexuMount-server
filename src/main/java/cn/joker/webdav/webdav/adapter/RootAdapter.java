@@ -10,6 +10,7 @@ import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.text.ParseException;
@@ -91,7 +92,12 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void move(Path sourcePath) {
+    public void move(String sourcePath, String destPath) throws IOException {
+
+    }
+
+    @Override
+    public void copy(String sourcePath, String destPath) throws IOException {
 
     }
 }

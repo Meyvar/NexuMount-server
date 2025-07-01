@@ -29,5 +29,6 @@ public class SaTokenConfigure implements WebMvcConfigurer {
         SaFirewallCheckHookForHttpMethod.instance.allowMethods.add("LOCK");
         SaFirewallCheckHookForHttpMethod.instance.allowMethods.add("UNLOCK");
         SaFirewallCheckHookForHttpMethod.instance.allowMethods.add("MOVE");
+        SaFirewallCheckHookForHttpMethod.instance.allowMethods.add("COPY");
     }
 }

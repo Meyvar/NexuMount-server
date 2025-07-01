@@ -10,9 +10,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.*;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -134,7 +138,28 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void move(Path sourcePath) {
+    public void move(String sourcePath, String destPath) throws IOException {
+        Files.createDirectories(Paths.get(destPath).getParent());
+        Files.move(Paths.get(sourcePath), Paths.get(destPath));
+    }
 
+    @Override
+    public void copy(String sourcePath, String destPath) throws IOException {
+        File sourceFile = Paths.get(sourcePath).toFile();
+        File destFile = Paths.get(destPath).toFile();
+        if (sourceFile.isDirectory()) {
+            Files.walk(sourceFile.toPath()).forEach(source -> {
+                try {
+                    Path target = destFile.toPath().resolve(sourceFile.toPath().relativize(source));
+                    Files.createDirectories(target.getParent());
+                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } else {
+            Files.createDirectories(destFile.getParentFile().toPath());
+            Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }

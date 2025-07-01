@@ -70,6 +70,13 @@ public interface IFileAdapter {
      *
      * @param sourcePath 源路径
      */
-    void move(Path sourcePath);
+    void move(String sourcePath, String destPath)  throws IOException;
 
+    /**
+     * 文件发展
+     * @param sourcePath
+     * @param destPath
+     * @throws IOException
+     */
+    void copy(String sourcePath, String destPath) throws IOException;
 }
