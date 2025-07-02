@@ -73,20 +73,11 @@ public class WebDavServiceImpl implements IWebDavService {
 
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        if (!adapterManager.hasPath()) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        RequestStatus status = adapterManager.propFind();
+
+        if (!status.isSuccess()){
+            resp.sendError(status.getCode(), status.getMessage());
             return;
-        }
-
-        List<FileResource> list = new ArrayList<>();
-
-        HttpServletRequest request = RequestHolder.getRequest();
-        String depth = request.getHeader("depth");
-
-        list.add(adapterManager.getFolderItself());
-
-        if ("1".equals(depth)) {
-            list.addAll(adapterManager.propFind());
         }
 
 
@@ -98,7 +89,7 @@ public class WebDavServiceImpl implements IWebDavService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.ENGLISH);
 
 
-        for (FileResource resource : list) {
+        for (FileResource resource : status.getFileResources()) {
             if (resource == null) {
                 continue;
             }
@@ -223,11 +214,11 @@ public class WebDavServiceImpl implements IWebDavService {
     private void handleDelete(HttpServletResponse resp, Path path, String uri) throws IOException {
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        if (!adapterManager.hasPath()) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        RequestStatus status = adapterManager.delete();
+        if (!status.isSuccess()){
+            resp.sendError(status.getCode(), status.getMessage());
             return;
         }
-        adapterManager.delete();
         resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 

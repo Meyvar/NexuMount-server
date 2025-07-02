@@ -129,33 +129,53 @@ public class AdapterManager {
      *
      * @return
      */
-    public List<FileResource> propFind() throws IOException {
+    public RequestStatus propFind() throws IOException {
+        RequestStatus status = new RequestStatus();
+
+        if (!hasPath()) {
+            status.setCode(HttpServletResponse.SC_NOT_FOUND);
+            return status;
+        } else {
+            status.setSuccess(true);
+        }
+
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
-            return adapter.propFind(fileBucket, uri);
+            status.setFileResources(adapter.propFind(fileBucket, uri));
+            return status;
         }
 
         List<FileResource> list = adapter.propFind(fileBucket, uri);
 
-        for (FileBucket bucket : fileBucketList) {
-            FileResource resource = new FileResource();
-            resource.setType("folder");
+        HttpServletRequest request = RequestHolder.getRequest();
+        String depth = request.getHeader("depth");
 
-            try {
-                resource.setDate(format.parse(bucket.getUpdateTime()));
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
+        list.add(getFolderItself());
+
+        if ("1".equals(depth)) {
+
+            for (FileBucket bucket : fileBucketList) {
+                FileResource resource = new FileResource();
+                resource.setType("folder");
+
+                try {
+                    resource.setDate(format.parse(bucket.getUpdateTime()));
+                } catch (ParseException e) {
+                    throw new RuntimeException(e);
+                }
+
+                String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
+                resource.setName(name);
+
+                resource.setHref(bucket.getPath());
+
+                resource.setSize(0L);
+
+                list.add(resource);
             }
-
-            String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
-            resource.setName(name);
-
-            resource.setHref(bucket.getPath());
-
-            resource.setSize(0L);
-
-            list.add(resource);
         }
-        return list;
+
+        status.setFileResources(list);
+        return status;
     }
 
     public GetFileResource get() throws IOException {
@@ -170,8 +190,17 @@ public class AdapterManager {
         adapter.mkcol(fileBucket.getSourcePath() + uri);
     }
 
-    public void delete() throws IOException {
+    public RequestStatus delete() throws IOException {
+        RequestStatus status = new RequestStatus();
+
+        if (!hasPath()) {
+            status.setCode(HttpServletResponse.SC_NOT_FOUND);
+            return status;
+        } else {
+            status.setSuccess(true);
+        }
         adapter.delete(fileBucket.getSourcePath() + uri);
+        return status;
     }
 
     public void put() throws IOException {
