@@ -121,6 +121,11 @@ public class WebDavServiceImpl implements IWebDavService {
             String safeDisplayName = resource.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 
             xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
+
+            if ("folder".equals(resource.getType())){
+                xml.append("<d:getcontenttype>").append(resource.getContentType()).append("</d:getcontenttype>");
+            }
+
             xml.append("</d:prop> <d:status>HTTP/1.1 200 OK</d:status> </d:propstat> ");
             xml.append("</d:response> ");
 

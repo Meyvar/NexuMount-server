@@ -93,7 +93,7 @@ public class AdapterManager {
      *
      * @return
      */
-    public FileResource getFolderItself() {
+    public FileResource getFolderItself() throws IOException {
         FileResource fileResource = new FileResource();
         fileResource.setType("folder");
         fileResource.setSize(0L);
@@ -129,7 +129,7 @@ public class AdapterManager {
      *
      * @return
      */
-    public List<FileResource> propFind() {
+    public List<FileResource> propFind() throws IOException {
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
             return adapter.propFind(fileBucket, uri);
         }

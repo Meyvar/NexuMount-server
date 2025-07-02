@@ -27,7 +27,7 @@ public interface IFileAdapter {
      *
      * @return
      */
-    FileResource getFolderItself(FileBucket fileBucket, String uri);
+    FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException;
 
     /**
      * 文件列表
@@ -36,7 +36,7 @@ public interface IFileAdapter {
      * @param uri  请求地址
      * @return 文件list
      */
-    List<FileResource> propFind(FileBucket fileBucket, String uri);
+    List<FileResource> propFind(FileBucket fileBucket, String uri) throws IOException;
 
     /**
      * 获取资源

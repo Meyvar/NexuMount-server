@@ -33,7 +33,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public FileResource getFolderItself(FileBucket fileBucket, String uri) {
+    public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
         File file = new File(fileBucket.getSourcePath() + uri);
         FileResource fileResource = new FileResource();
 
@@ -43,6 +43,7 @@ public class SystemFileAdapter implements IFileAdapter {
         } else {
             fileResource.setType("file");
             fileResource.setSize(file.length());
+            fileResource.setContentType(Files.probeContentType(file.toPath()));
         }
 
 
@@ -62,14 +63,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public List<FileResource> propFind(FileBucket fileBucket, String uri) {
-
-//        if (!hasPath(Path.of(path + uri))) {
-//            HttpServletResponse response = RequestHolder.getResponse();
-//            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-//            return null;
-//        }
-
+    public List<FileResource> propFind(FileBucket fileBucket, String uri) throws IOException {
         Path filePath = Path.of(fileBucket.getSourcePath() + uri);
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
@@ -80,7 +74,15 @@ public class SystemFileAdapter implements IFileAdapter {
             for (File f : files) {
                 FileResource ressource = new FileResource();
 
-                ressource.setType(f.isDirectory() ? "folder" : "file");
+                if (f.isDirectory()) {
+                    ressource.setType("folder");
+                    ressource.setSize(0L);
+                } else {
+                    ressource.setType("file");
+                    ressource.setContentType(Files.probeContentType(f.toPath()));
+                    ressource.setSize(f.length());
+                }
+
                 ressource.setName(f.getName());
                 try {
                     ressource.setDate(new Date(Files.getLastModifiedTime(f.toPath()).toMillis()));
@@ -88,7 +90,6 @@ public class SystemFileAdapter implements IFileAdapter {
                     throw new RuntimeException(e);
                 }
 
-                ressource.setSize(f.isDirectory() ? 0L : f.length());
                 ressource.setHref(fileBucket.getPath() + uri + f.getName());
                 list.add(ressource);
             }
@@ -123,32 +124,15 @@ public class SystemFileAdapter implements IFileAdapter {
 
             byte[] buffer = new byte[8192];
             int bytesRead;
-            long total = 0;
 
             while ((bytesRead = input.read(buffer)) != -1) {
-                try {
-                    output.write(buffer, 0, bytesRead);
-                    total += bytesRead;
-                } catch (IOException e) {
-                    // 处理写入过程中的中断
-                    if (e.getMessage() != null && e.getMessage().contains("Broken pipe")) {
-                        System.out.println("Client disconnected during upload");
-                        throw new ClientAbortException("Client disconnected during upload", e);
-                    }
-                    throw e;
-                }
+                output.write(buffer, 0, bytesRead);
             }
 
             output.flush();
-            System.out.println("Wrote " + total + " bytes to file.");
         } catch (ClientAbortException e) {
-            // 客户端中断连接，删除可能已部分上传的文件
-            try {
-                Files.deleteIfExists(targetPath);
-            } catch (IOException deleteEx) {
-                System.err.println("Failed to clean up partially uploaded file: " + deleteEx.getMessage());
-            }
-            throw e;
+            Files.deleteIfExists(targetPath);
+
         }
     }
 
