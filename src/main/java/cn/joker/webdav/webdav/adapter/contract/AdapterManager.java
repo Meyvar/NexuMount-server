@@ -5,6 +5,7 @@ import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.RequestStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -176,23 +177,25 @@ public class AdapterManager {
         adapter.put(fileBucket.getSourcePath() + uri);
     }
 
-    public void move() throws IOException {
+    public RequestStatus move() throws IOException {
+        RequestStatus status = new RequestStatus();
+
         HttpServletRequest request = RequestHolder.getRequest();
         HttpServletResponse response = RequestHolder.getResponse();
 
         String destHeader = request.getHeader("Destination");
 
         if (destHeader == null || !destHeader.startsWith("http")) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
+            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
+            return status;
         }
 
         URI destUriObj = URI.create(destHeader);
         String destPathRaw = destUriObj.getPath();
 
         if (!destPathRaw.startsWith(fileBucket.getPath())) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
+            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
+            return status;
         }
 
         destPathRaw = destPathRaw.replaceFirst(fileBucket.getPath(), "");
@@ -203,32 +206,38 @@ public class AdapterManager {
             if (overwrite) {
                 adapter.delete(destPathRaw.toString());
             } else {
-                response.setStatus(HttpServletResponse.SC_PRECONDITION_FAILED);
-                return;
+                status.setCode(HttpServletResponse.SC_PRECONDITION_FAILED);
+                return status;
             }
         }
 
 
         adapter.move(fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        status.setCode(HttpServletResponse.SC_CREATED);
+        status.setSuccess(true);
+        return status;
     }
 
-    public void copy() throws IOException {
+    public RequestStatus copy() throws IOException {
+        RequestStatus status = new RequestStatus();
+
+
         HttpServletRequest request = RequestHolder.getRequest();
         HttpServletResponse response = RequestHolder.getResponse();
 
         String destHeader = request.getHeader("Destination");
 
         if (destHeader == null || !destHeader.startsWith("http")) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
+            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
+            return status;
         }
 
         URI destUriObj = URI.create(destHeader);
         String destPathRaw = destUriObj.getPath();
 
         if (!destPathRaw.startsWith(fileBucket.getPath())) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
+            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
+            return status;
         }
 
 
@@ -236,10 +245,14 @@ public class AdapterManager {
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
         if (adapter.hasPath(destPathRaw) && !overwrite) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Destination already exists！");
-            return;
+            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
+            status.setMessage("Destination already exists！");
+            return status;
         }
 
         adapter.copy(fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        status.setCode(HttpServletResponse.SC_CREATED);
+        status.setSuccess(true);
+        return status;
     }
 }

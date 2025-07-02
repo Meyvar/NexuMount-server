@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.service.impl;
 
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.RequestStatus;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.utils.RequestHolder;
 import jakarta.servlet.ServletInputStream;
@@ -71,6 +72,11 @@ public class WebDavServiceImpl implements IWebDavService {
     private void handlePropFind(HttpServletResponse resp, Path path, String uri) throws IOException {
 
         AdapterManager adapterManager = new AdapterManager(path, uri);
+
+        if (!adapterManager.hasPath()){
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
 
         List<FileResource> list = new ArrayList<>();
 
@@ -218,13 +224,22 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
         AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
-        adapterManager.move();
-        resp.setStatus(HttpServletResponse.SC_CREATED);
+        RequestStatus status = adapterManager.move();
+
+        if (status.isSuccess()) {
+            resp.setStatus(HttpServletResponse.SC_CREATED);
+        } else {
+            resp.sendError(status.getCode(), status.getMessage());
+        }
     }
 
     private void handleCopy(HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
         AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
-        adapterManager.copy();
-        resp.setStatus(HttpServletResponse.SC_CREATED);
+        RequestStatus status = adapterManager.copy();
+        if (status.isSuccess()) {
+            resp.setStatus(HttpServletResponse.SC_CREATED);
+        } else {
+            resp.sendError(status.getCode(), status.getMessage());
+        }
     }
 }
