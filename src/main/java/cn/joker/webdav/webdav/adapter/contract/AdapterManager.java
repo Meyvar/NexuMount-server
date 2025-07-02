@@ -5,6 +5,7 @@ import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.GetFileResource;
 import cn.joker.webdav.webdav.entity.RequestStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
@@ -157,7 +158,7 @@ public class AdapterManager {
         return list;
     }
 
-    public InputStream get() throws IOException {
+    public GetFileResource get() throws IOException {
         return adapter.get(fileBucket.getSourcePath() + uri);
     }
 

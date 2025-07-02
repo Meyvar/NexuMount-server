@@ -5,9 +5,11 @@ import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.GetFileResource;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.catalina.connector.ClientAbortException;
 
 import java.io.*;
 import java.net.URI;
@@ -96,10 +98,12 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public InputStream get(String path) throws IOException {
-        Path p = Paths.get(path);
-        InputStream in = Files.newInputStream(p);
-        return in;
+    public GetFileResource get(String path) throws IOException {
+        GetFileResource resource = new GetFileResource();
+        File file = new File(path);
+        resource.setFilePath(file.getPath());
+        resource.setFileSize(file.length());
+        return resource;
     }
 
     @Override
@@ -108,22 +112,43 @@ public class SystemFileAdapter implements IFileAdapter {
         long contentLength = req.getContentLengthLong();
         System.out.println("PUT: " + path + ", content-length: " + contentLength);
 
-        Files.createDirectories(Paths.get(path).getParent());
+        // 确保父目录存在
+        Path targetPath = Paths.get(path);
+        if (targetPath.getParent() != null) {
+            Files.createDirectories(targetPath.getParent());
+        }
 
         try (ServletInputStream input = req.getInputStream();
-             OutputStream output = Files.newOutputStream(Paths.get(path))) {
+             OutputStream output = Files.newOutputStream(targetPath)) {
 
             byte[] buffer = new byte[8192];
             int bytesRead;
             long total = 0;
 
             while ((bytesRead = input.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
-                total += bytesRead;
+                try {
+                    output.write(buffer, 0, bytesRead);
+                    total += bytesRead;
+                } catch (IOException e) {
+                    // 处理写入过程中的中断
+                    if (e.getMessage() != null && e.getMessage().contains("Broken pipe")) {
+                        System.out.println("Client disconnected during upload");
+                        throw new ClientAbortException("Client disconnected during upload", e);
+                    }
+                    throw e;
+                }
             }
 
             output.flush();
             System.out.println("Wrote " + total + " bytes to file.");
+        } catch (ClientAbortException e) {
+            // 客户端中断连接，删除可能已部分上传的文件
+            try {
+                Files.deleteIfExists(targetPath);
+            } catch (IOException deleteEx) {
+                System.err.println("Failed to clean up partially uploaded file: " + deleteEx.getMessage());
+            }
+            throw e;
         }
     }
 

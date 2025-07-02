@@ -4,6 +4,7 @@ import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.GetFileResource;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -72,7 +73,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public InputStream get(String path) {
+    public GetFileResource get(String path) {
         return null;
     }
 

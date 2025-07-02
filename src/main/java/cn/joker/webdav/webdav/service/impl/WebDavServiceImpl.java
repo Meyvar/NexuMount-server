@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.service.impl;
 
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.GetFileResource;
 import cn.joker.webdav.webdav.entity.RequestStatus;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.utils.RequestHolder;
@@ -9,10 +10,9 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -44,7 +44,6 @@ public class WebDavServiceImpl implements IWebDavService {
         System.out.println(method + "  uri: " + uri + "  path:" + path);
 
         response.setHeader("DAV", "1,2");
-        response.setContentType("application/xml;charset=UTF-8");
 
         switch (method) {
             case "OPTIONS" -> handleOptions(response);
@@ -73,7 +72,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
-        if (!adapterManager.hasPath()){
+        if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
@@ -126,6 +125,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
         }
         xml.append("</d:multistatus>");
+        resp.setContentType("application/xml;charset=UTF-8");
 
 
         byte[] data = xml.toString().getBytes(StandardCharsets.UTF_8);
@@ -152,6 +152,8 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
+        HttpServletRequest req = RequestHolder.getRequest();
+
         AdapterManager adapterManager = new AdapterManager(path, uri);
 
         if (!adapterManager.hasPath()) {
@@ -160,7 +162,49 @@ public class WebDavServiceImpl implements IWebDavService {
         }
 
         resp.setStatus(HttpServletResponse.SC_OK);
-        adapterManager.get().transferTo(resp.getOutputStream());
+        GetFileResource fileResource = adapterManager.get();
+        resp.setContentLength(Math.toIntExact(fileResource.getFileSize()));
+
+        File file = new File(fileResource.getFilePath());
+
+        resp.setContentType(Files.probeContentType(file.toPath()));
+
+
+        String rangeHeader = req.getHeader("Range");
+        if (StringUtils.hasText(rangeHeader)) {
+            String[] ranges = rangeHeader.replace("bytes=", "").split("-");
+            long start = Long.parseLong(ranges[0]);
+            long end = (ranges.length > 1 && !ranges[1].isEmpty())
+                    ? Long.parseLong(ranges[1])
+                    : file.length() - 1;
+
+            long contentLength = end - start + 1;
+
+            resp.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+            resp.setHeader("Content-Type", Files.probeContentType(file.toPath()));
+            resp.setHeader("Accept-Ranges", "bytes");
+            resp.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + file.length());
+            resp.setHeader("Content-Length", String.valueOf(contentLength));
+
+            try (RandomAccessFile raf = new RandomAccessFile(file, "r");
+                 OutputStream out = resp.getOutputStream()) {
+
+                raf.seek(start);
+
+                byte[] buffer = new byte[8192];
+                long remaining = contentLength;
+
+                while (remaining > 0) {
+                    int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+                    if (read == -1) break;
+                    out.write(buffer, 0, read);
+                    remaining -= read;
+                }
+            }
+        } else {
+            InputStream inputStream = new FileInputStream(file);
+            inputStream.transferTo(resp.getOutputStream());
+        }
     }
 
     private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {

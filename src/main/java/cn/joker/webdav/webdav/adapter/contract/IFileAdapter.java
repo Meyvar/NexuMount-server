@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.webdav.entity.FileResource;
+import cn.joker.webdav.webdav.entity.GetFileResource;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -42,7 +43,7 @@ public interface IFileAdapter {
      *
      * @param path 资源路径
      */
-    InputStream get(String path) throws IOException;
+    GetFileResource get(String path) throws IOException;
 
     /**
      * 上传资源
