@@ -6,22 +6,23 @@ import cn.joker.webdav.webdav.entity.GetFileResource;
 import cn.joker.webdav.webdav.entity.RequestStatus;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.utils.RequestHolder;
-import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
-import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class WebDavServiceImpl implements IWebDavService {
@@ -94,6 +95,9 @@ public class WebDavServiceImpl implements IWebDavService {
         xml.append("<d:multistatus xmlns:cal=\"urn:ietf:params:xml:ns:caldav\" xmlns:cs=\"http://calendarserver.org/ns/\" xmlns:card=\"urn:ietf:params:xml:ns:carddav\" xmlns:d=\"DAV:\">");
 
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.ENGLISH);
+
+
         for (FileResource resource : list) {
             if (resource == null) {
                 continue;
@@ -111,10 +115,7 @@ public class WebDavServiceImpl implements IWebDavService {
             xml.append("<d:resourcetype>").append("folder".equals(resource.getType()) ? "<d:collection/>" : "").append("</d:resourcetype> ");
             xml.append("<d:getcontentlength>").append(resource.getSize()).append("</d:getcontentlength> ");
             xml.append("<d:getlastmodified>").append(
-                    resource.getDate()
-                            .toInstant()
-                            .atZone(java.time.ZoneOffset.UTC)
-                            .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                    resource.getDate().toInstant().atZone(ZoneOffset.UTC).format(formatter)
             ).append("</d:getlastmodified>");
 
             String safeDisplayName = resource.getName().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
@@ -140,15 +141,11 @@ public class WebDavServiceImpl implements IWebDavService {
         for (String segment : segments) {
             if (!segment.isEmpty()) {
                 encoded.append("/");
-                try {
-                    encoded.append(URLEncoder.encode(segment, "UTF-8").replace("+", "%20"));
-                } catch (UnsupportedEncodingException e) {
-                    encoded.append(segment);
-                }
+                encoded.append(URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"));
             }
         }
         if (uri.endsWith("/")) encoded.append("/");
-        return encoded.length() == 0 ? "/" : encoded.toString();
+        return encoded.isEmpty() ? "/" : encoded.toString();
     }
 
     private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
@@ -200,10 +197,13 @@ public class WebDavServiceImpl implements IWebDavService {
                     out.write(buffer, 0, read);
                     remaining -= read;
                 }
+                raf.close();
+                out.flush();
             }
         } else {
             InputStream inputStream = new FileInputStream(file);
             inputStream.transferTo(resp.getOutputStream());
+            inputStream.close();
         }
     }
 
