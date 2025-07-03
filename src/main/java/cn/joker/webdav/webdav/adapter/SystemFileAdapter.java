@@ -10,6 +10,7 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URI;
@@ -19,6 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -113,6 +116,11 @@ public class SystemFileAdapter implements IFileAdapter {
         long contentLength = req.getContentLengthLong();
         System.out.println("PUT: " + path + ", content-length: " + contentLength);
 
+        String mTime = req.getHeader("X-Oc-Mtime");
+        if (!StringUtils.hasText(mTime)){
+            mTime = req.getHeader("Last-Modified");
+        }
+
         // 确保父目录存在
         Path targetPath = Paths.get(path);
         if (targetPath.getParent() != null) {
@@ -130,6 +138,12 @@ public class SystemFileAdapter implements IFileAdapter {
             }
 
             output.flush();
+
+            if (StringUtils.hasText(mTime)){
+                long timestamp = Long.parseLong(mTime);
+                FileTime fileTime = FileTime.from(Instant.ofEpochSecond(timestamp));
+                Files.setLastModifiedTime(targetPath, fileTime);
+            }
         } catch (ClientAbortException e) {
             Files.deleteIfExists(targetPath);
 
