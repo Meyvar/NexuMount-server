@@ -1,8 +1,6 @@
 package cn.joker.webdav.webdav.filter;
 
 
-import cn.dev33.satoken.router.SaRouter;
-import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -33,7 +31,7 @@ public class WebDavFilter extends OncePerRequestFilter {
 
         String basic = request.getHeader("Authorization");
 
-        if (!StringUtils.hasText(sfd) || StringUtils.hasText(depth) || StringUtils.hasText(basic)) {
+        if (StringUtils.hasText(depth) || StringUtils.hasText(basic)) {
 
             if (!StringUtils.hasText(basic)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

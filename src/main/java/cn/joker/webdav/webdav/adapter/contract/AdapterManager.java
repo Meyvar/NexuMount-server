@@ -10,6 +10,7 @@ import cn.joker.webdav.webdav.entity.RequestStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Getter;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.util.StringUtils;
@@ -26,12 +27,11 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
 public class AdapterManager {
-
-    private Path path;
 
     private String uri;
 
@@ -45,9 +45,7 @@ public class AdapterManager {
 
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-    public AdapterManager(Path path, String uri) {
-        this.path = path;
-
+    public AdapterManager(String uri) {
         cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
 
         if ("/".equals(uri)) {
@@ -79,7 +77,6 @@ public class AdapterManager {
         fileBucketList = FileBucketPathUtils.findDirectChildren(uri, list);
 
         this.uri = uri.replaceAll(fileBucket.getPath(), "");
-        this.path = Path.of(this.uri);
         if (!StringUtils.hasText(this.uri)) {
             this.uri = "/";
         }
@@ -146,33 +143,40 @@ public class AdapterManager {
 
         List<FileResource> list = adapter.propFind(fileBucket, uri);
 
-        HttpServletRequest request = RequestHolder.getRequest();
-        String depth = request.getHeader("depth");
+        for (FileBucket bucket : fileBucketList) {
+            FileResource resource = new FileResource();
+            resource.setType("folder");
 
-        list.add(getFolderItself());
-
-        if ("1".equals(depth)) {
-
-            for (FileBucket bucket : fileBucketList) {
-                FileResource resource = new FileResource();
-                resource.setType("folder");
-
-                try {
-                    resource.setDate(format.parse(bucket.getUpdateTime()));
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
-                }
-
-                String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
-                resource.setName(name);
-
-                resource.setHref(bucket.getPath());
-
-                resource.setSize(0L);
-
-                list.add(resource);
+            try {
+                resource.setDate(format.parse(bucket.getUpdateTime()));
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
             }
+
+            String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
+            resource.setName(name);
+
+            resource.setHref(bucket.getPath());
+
+            resource.setSize(0L);
+
+            list.add(resource);
         }
+
+        list.sort(new Comparator<FileResource>() {
+            @Override
+            public int compare(FileResource o1, FileResource o2) {
+                int io1 = "folder".equals(o1.getType()) ? 1 : 2;
+                int io2 = "folder".equals(o2.getType()) ? 1 : 2;
+                if (io1 > io2) {
+                    return 1;
+                } else if (io1 < io2) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        });
 
         status.setFileResources(list);
         return status;
@@ -284,5 +288,9 @@ public class AdapterManager {
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
+    }
+
+    public String getDownloadUrl() {
+        return adapter.getDownloadUrl(fileBucket.getPath() + uri);
     }
 }

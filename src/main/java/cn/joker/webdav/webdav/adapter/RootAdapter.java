@@ -101,4 +101,9 @@ public class RootAdapter implements IFileAdapter {
     public void copy(String sourcePath, String destPath) throws IOException {
 
     }
+
+    @Override
+    public String getDownloadUrl(String path) {
+        return "";
+    }
 }

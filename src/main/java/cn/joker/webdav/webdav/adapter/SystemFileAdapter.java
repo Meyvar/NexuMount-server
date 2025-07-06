@@ -67,6 +67,9 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri) throws IOException {
+        if (!uri.endsWith("/")) {
+            uri += "/";
+        }
         Path filePath = Path.of(fileBucket.getSourcePath() + uri);
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
@@ -184,5 +187,14 @@ public class SystemFileAdapter implements IFileAdapter {
             Files.createDirectories(destFile.getParentFile().toPath());
             Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    @Override
+    public String getDownloadUrl(String path) {
+        HttpServletRequest request = RequestHolder.getRequest();
+        String url = request.getRequestURL().toString();
+        String uri = request.getRequestURI();
+        url = url.replace(uri, "") + "/api/pub/dav/load.do?path=" + path;
+        return url;
     }
 }

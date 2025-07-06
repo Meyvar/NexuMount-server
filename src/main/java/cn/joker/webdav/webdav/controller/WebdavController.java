@@ -6,10 +6,7 @@ import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.RequestParam;
 import cn.joker.webdav.webdav.service.IApiService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,7 +18,7 @@ public class WebdavController {
     private IApiService apiService;
 
     @PostMapping("/list.do")
-    public Response<List<FileResource>> list(RequestParam param) {
+    public Response<List<FileResource>> list(@RequestBody RequestParam param) {
         return Response.success(apiService.list(param));
     }
 
@@ -31,4 +28,13 @@ public class WebdavController {
         return Response.success();
     }
 
+    @GetMapping("/get.do")
+    public Response<FileResource> get(RequestParam param) {
+        return Response.success(apiService.get(param));
+    }
+
+    @GetMapping("/load.do")
+    public void load(RequestParam param) {
+        apiService.load(param);
+    }
 }

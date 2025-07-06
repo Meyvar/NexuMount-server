@@ -10,4 +10,8 @@ public interface IApiService {
     List<FileResource> list(RequestParam param);
 
     void delete(RequestParam param);
+
+    FileResource get(RequestParam param);
+
+    void load(RequestParam param);
 }

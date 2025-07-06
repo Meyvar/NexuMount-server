@@ -80,4 +80,7 @@ public interface IFileAdapter {
      * @throws IOException
      */
     void copy(String sourcePath, String destPath) throws IOException;
+
+
+    String getDownloadUrl(String path);
 }

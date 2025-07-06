@@ -71,13 +71,27 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handlePropFind(HttpServletResponse resp, Path path, String uri) throws IOException {
 
-        AdapterManager adapterManager = new AdapterManager(path, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
 
-        RequestStatus status = adapterManager.propFind();
-
-        if (!status.isSuccess()){
-            resp.sendError(status.getCode(), status.getMessage());
+        if (!adapterManager.hasPath()) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
+        }
+
+        List<FileResource> list = new ArrayList<>();
+
+        HttpServletRequest request = RequestHolder.getRequest();
+        String depth = request.getHeader("depth");
+
+        list.add(adapterManager.getFolderItself());
+
+        if ("1".equals(depth)) {
+            RequestStatus status = adapterManager.propFind();
+            if (!status.isSuccess()){
+                resp.sendError(status.getCode(), status.getMessage());
+                return;
+            }
+            list.addAll(status.getFileResources());
         }
 
 
@@ -89,7 +103,7 @@ public class WebDavServiceImpl implements IWebDavService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.ENGLISH);
 
 
-        for (FileResource resource : status.getFileResources()) {
+        for (FileResource resource : list) {
             if (resource == null) {
                 continue;
             }
@@ -113,7 +127,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
             xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
 
-            if ("folder".equals(resource.getType())){
+            if ("folder".equals(resource.getType())) {
                 xml.append("<d:getcontenttype>").append(resource.getContentType()).append("</d:getcontenttype>");
             }
 
@@ -140,14 +154,16 @@ public class WebDavServiceImpl implements IWebDavService {
                 encoded.append(URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"));
             }
         }
-        if (uri.endsWith("/")) encoded.append("/");
+        if (uri.endsWith("/")) {
+            encoded.append("/");
+        }
         return encoded.isEmpty() ? "/" : encoded.toString();
     }
 
     private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
         HttpServletRequest req = RequestHolder.getRequest();
 
-        AdapterManager adapterManager = new AdapterManager(path, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
 
         if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -189,7 +205,9 @@ public class WebDavServiceImpl implements IWebDavService {
 
                 while (remaining > 0) {
                     int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
-                    if (read == -1) break;
+                    if (read == -1) {
+                        break;
+                    }
                     out.write(buffer, 0, read);
                     remaining -= read;
                 }
@@ -204,7 +222,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(path, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
         adapterManager.put();
         // 响应
         resp.setStatus(HttpServletResponse.SC_CREATED);
@@ -212,10 +230,10 @@ public class WebDavServiceImpl implements IWebDavService {
 
 
     private void handleDelete(HttpServletResponse resp, Path path, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(path, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
 
         RequestStatus status = adapterManager.delete();
-        if (!status.isSuccess()){
+        if (!status.isSuccess()) {
             resp.sendError(status.getCode(), status.getMessage());
             return;
         }
@@ -223,7 +241,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleMkcol(HttpServletResponse resp, Path path, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(path, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
 
         if (adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
@@ -263,7 +281,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
         RequestStatus status = adapterManager.move();
 
         if (status.isSuccess()) {
@@ -274,7 +292,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleCopy(HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(sourcePath, uri);
+        AdapterManager adapterManager = new AdapterManager(uri);
         RequestStatus status = adapterManager.copy();
         if (status.isSuccess()) {
             resp.setStatus(HttpServletResponse.SC_CREATED);
