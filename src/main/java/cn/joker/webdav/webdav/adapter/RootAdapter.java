@@ -103,7 +103,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(String path) {
+    public String getDownloadUrl(String path, String fileType) {
         return "";
     }
 }

@@ -14,4 +14,9 @@ public interface IApiService {
     FileResource get(RequestParam param);
 
     void load(RequestParam param);
+
+    void download(RequestParam param);
+
+    void preview(RequestParam param);
+
 }

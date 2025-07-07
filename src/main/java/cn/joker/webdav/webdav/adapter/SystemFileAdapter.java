@@ -120,7 +120,7 @@ public class SystemFileAdapter implements IFileAdapter {
         System.out.println("PUT: " + path + ", content-length: " + contentLength);
 
         String mTime = req.getHeader("X-Oc-Mtime");
-        if (!StringUtils.hasText(mTime)){
+        if (!StringUtils.hasText(mTime)) {
             mTime = req.getHeader("Last-Modified");
         }
 
@@ -142,7 +142,7 @@ public class SystemFileAdapter implements IFileAdapter {
 
             output.flush();
 
-            if (StringUtils.hasText(mTime)){
+            if (StringUtils.hasText(mTime)) {
                 long timestamp = Long.parseLong(mTime);
                 FileTime fileTime = FileTime.from(Instant.ofEpochSecond(timestamp));
                 Files.setLastModifiedTime(targetPath, fileTime);
@@ -190,11 +190,8 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(String path) {
-        HttpServletRequest request = RequestHolder.getRequest();
-        String url = request.getRequestURL().toString();
-        String uri = request.getRequestURI();
-        url = url.replace(uri, "") + "/api/pub/dav/load.do?path=" + path;
+    public String getDownloadUrl(String path, String fileType) {
+        String url = "/api/pub/dav/load.do?path=" + path;
         return url;
     }
 }

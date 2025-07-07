@@ -82,5 +82,5 @@ public interface IFileAdapter {
     void copy(String sourcePath, String destPath) throws IOException;
 
 
-    String getDownloadUrl(String path);
+    String getDownloadUrl(String path, String fileType);
 }

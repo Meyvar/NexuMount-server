@@ -290,7 +290,7 @@ public class AdapterManager {
         return status;
     }
 
-    public String getDownloadUrl() {
-        return adapter.getDownloadUrl(fileBucket.getPath() + uri);
+    public String getDownloadUrl(String fileType) {
+        return adapter.getDownloadUrl(fileBucket.getPath() + uri, fileType);
     }
 }
