@@ -8,6 +8,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -53,7 +54,20 @@ public class FileBucketCacheLoader implements ApplicationRunner {
             for (FileBucket bucket : bucketList) {
                 cache.put(bucket.getPath(), bucket);
             }
+            createFileBucketStatus();
         }
 
+    }
+
+    public void createFileBucketStatus() {
+        // 启动时执行一次
+        List<FileBucket> list = fileBucketService.findAll();
+        list.removeIf(item -> "disable".equals(item.getStatus()));
+        fileBucketService.updateFileBucketStatus(list.stream().map(FileBucket::getUuid).toList());
+    }
+
+    @Scheduled(fixedRate = 12 * 60 * 60 * 1000)
+    public void updateFileBucketStatus() {
+        createFileBucketStatus();
     }
 }
