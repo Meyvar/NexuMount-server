@@ -16,7 +16,4 @@ public interface IApiService {
     void load(RequestParam param);
 
     void download(RequestParam param);
-
-    void preview(RequestParam param);
-
 }

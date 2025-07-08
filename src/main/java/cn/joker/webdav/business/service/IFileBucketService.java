@@ -14,4 +14,7 @@ public interface IFileBucketService {
 
     void save(FileBucket fileBucket);
 
+    void updateFileBucketStatus(List<String> bucketList);
+
+    void delete(String uuid);
 }

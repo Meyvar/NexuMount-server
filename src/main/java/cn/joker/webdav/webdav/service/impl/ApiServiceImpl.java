@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -140,11 +141,11 @@ public class ApiServiceImpl implements IApiService {
 
     @Override
     public void download(RequestParam param) {
-
-    }
-
-    @Override
-    public void preview(RequestParam param) {
-
+        String[] paths = param.getPath().split("/");
+        String fileName = paths[paths.length - 1];
+        fileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+        HttpServletResponse response = RequestHolder.getResponse();
+        response.setHeader("Content-disposition", "attachment; filename=" + fileName);
+        load(param);
     }
 }

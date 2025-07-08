@@ -36,4 +36,10 @@ public class FileBucketController {
         fileBucketService.save(fileBucket);
         return success();
     }
+
+    @RequestMapping("/delete.do")
+    public Response<String> delete(String uuid) {
+        fileBucketService.delete(uuid);
+        return success();
+    }
 }

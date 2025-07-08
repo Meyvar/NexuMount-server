@@ -42,9 +42,4 @@ public class WebdavController {
     public void download(RequestParam param) {
         apiService.download(param);
     }
-
-    @GetMapping("/preview.do")
-    public void preview(RequestParam param) {
-        apiService.preview(param);
-    }
 }

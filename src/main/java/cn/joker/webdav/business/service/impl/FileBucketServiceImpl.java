@@ -3,8 +3,11 @@ package cn.joker.webdav.business.service.impl;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.service.IFileBucketService;
 import cn.joker.webdav.database.service.IKeyValueService;
+import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
+import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
@@ -97,5 +100,22 @@ public class FileBucketServiceImpl implements IFileBucketService {
                 cache.put(bucket.getPath(), bucket);
             }
         }
+    }
+
+
+    @Override
+    public void updateFileBucketStatus(List<String> bucketList) {
+        for (String s : bucketList) {
+            FileBucket fileBucket = keyValueService.findBusinessData("fileBucket", s, FileBucket.class);
+            IFileAdapter adapter = SprintContextUtil.getApplicationContext().getBean(fileBucket.getAdapter(), IFileAdapter.class);
+            String status = adapter.workStatus(fileBucket);
+            fileBucket.setStatus(status);
+            keyValueService.updateBusinessData("fileBucket", fileBucket, FileBucket.class);
+        }
+    }
+
+    @Override
+    public void delete(String uuid) {
+        keyValueService.deleteBusinessData("fileBucket", uuid);
     }
 }

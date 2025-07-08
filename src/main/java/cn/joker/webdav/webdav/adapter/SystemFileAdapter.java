@@ -8,14 +8,10 @@ import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -191,7 +187,11 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public String getDownloadUrl(String path, String fileType) {
-        String url = "/api/pub/dav/load.do?path=" + path;
-        return url;
+        return "/api/pub/dav/load.do?path=" + path;
+    }
+
+    @Override
+    public String workStatus(FileBucket fileBucket) {
+        return "work";
     }
 }

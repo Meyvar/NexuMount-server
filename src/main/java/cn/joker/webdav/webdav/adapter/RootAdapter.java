@@ -106,4 +106,9 @@ public class RootAdapter implements IFileAdapter {
     public String getDownloadUrl(String path, String fileType) {
         return "";
     }
+
+    @Override
+    public String workStatus(FileBucket fileBucket) {
+        return "";
+    }
 }

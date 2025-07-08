@@ -74,7 +74,7 @@ public interface IFileAdapter {
     void move(String sourcePath, String destPath)  throws IOException;
 
     /**
-     * 文件发展
+     * 文件复制
      * @param sourcePath
      * @param destPath
      * @throws IOException
@@ -82,5 +82,19 @@ public interface IFileAdapter {
     void copy(String sourcePath, String destPath) throws IOException;
 
 
+    /**
+     * 获取下载地址
+     * @param path
+     * @param fileType
+     * @return
+     */
     String getDownloadUrl(String path, String fileType);
+
+
+    /**
+     * 存储桶工作状态
+     * @param fileBucket
+     * @return
+     */
+    String workStatus(FileBucket fileBucket);
 }
