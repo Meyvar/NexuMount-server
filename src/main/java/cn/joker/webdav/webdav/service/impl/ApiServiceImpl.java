@@ -42,7 +42,7 @@ public class ApiServiceImpl implements IApiService {
 
         List<FileResource> list = status.getFileResources();
         for (FileResource resource : list) {
-            if ("/".equals(param.getPath())) {
+            if ("/".equals(param.getPath()) && !resource.getHref().startsWith("/")) {
                 resource.setHref(param.getPath() + resource.getHref());
             }
             if (resource.getType().equals("folder")) {

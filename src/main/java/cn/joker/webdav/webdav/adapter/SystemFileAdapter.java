@@ -73,6 +73,9 @@ public class SystemFileAdapter implements IFileAdapter {
         List<FileResource> list = new ArrayList<>();
 
         if (files != null) {
+            if (fileBucket.getPath().equals("/") && uri.startsWith("/")) {
+                uri = uri.replaceFirst("/", "");
+            }
             for (File f : files) {
                 FileResource ressource = new FileResource();
 

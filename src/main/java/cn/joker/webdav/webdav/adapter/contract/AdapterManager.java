@@ -74,9 +74,16 @@ public class AdapterManager {
 
 
         fileBucket = FileBucketPathUtils.findLongestPrefix(uri, list);
-        fileBucketList = FileBucketPathUtils.findDirectChildren(uri, list);
+        fileBucketList = FileBucketPathUtils.matchSelfAndAllDescendants(uri, list).getDirectChildren();
 
-        this.uri = uri.replaceAll(fileBucket.getPath(), "");
+        if (fileBucket == null && !fileBucketList.isEmpty()) {
+            fileBucket = fileBucketList.getFirst();
+        }
+
+        this.uri = uri.replaceFirst(fileBucket.getPath(), "");
+        if (!this.uri.startsWith("/")) {
+            this.uri = "/" + this.uri;
+        }
         if (!StringUtils.hasText(this.uri)) {
             this.uri = "/";
         }
@@ -113,10 +120,12 @@ public class AdapterManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        fileResource.setName(this.uri);
+        fileResource.setName("");
 
         if (fileResource.getDate() == null) {
             fileResource = adapter.getFolderItself(fileBucket, uri);
+        } else {
+            fileResource.setHref("/");
         }
         return fileResource;
     }
@@ -152,11 +161,31 @@ public class AdapterManager {
             } catch (ParseException e) {
                 throw new RuntimeException(e);
             }
+            String bucketPath = this.fileBucket.getPath();
 
-            String name = bucket.getPath().replace(this.fileBucket.getPath() + "/", "");
+            if ("/".equals(bucketPath)) {
+                bucketPath = "";
+            }
+
+            String name = bucket.getPath().replaceFirst(bucketPath + "/", "");
+
+            if (name.contains("/")) {
+                name = "/" + name;
+                name = name.replaceFirst(uri, "");
+                if (name.startsWith("/")) {
+                    name = name.replaceFirst("/", "");
+                }
+                String[] names = name.split("/");
+                name = names[0];
+
+                String[] paths = bucket.getPath().split(name);
+
+                resource.setHref(paths[0] + name);
+            } else {
+                resource.setHref(bucket.getPath());
+            }
+
             resource.setName(name);
-
-            resource.setHref(bucket.getPath());
 
             resource.setSize(0L);
 
@@ -187,7 +216,16 @@ public class AdapterManager {
     }
 
     public boolean hasPath() {
-        return adapter.hasPath(fileBucket.getSourcePath() + uri);
+        boolean has = adapter.hasPath(fileBucket.getSourcePath() + uri);
+        if (!has){
+            for (FileBucket bucket : fileBucketList) {
+                if (bucket.getPath().startsWith(uri)) {
+                    has = true;
+                    break;
+                }
+            }
+        }
+        return has;
     }
 
     public void mkcol() throws IOException {
