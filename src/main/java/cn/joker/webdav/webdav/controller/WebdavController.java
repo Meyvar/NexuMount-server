@@ -7,6 +7,7 @@ import cn.joker.webdav.webdav.entity.RequestParam;
 import cn.joker.webdav.webdav.service.IApiService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -41,5 +42,10 @@ public class WebdavController {
     @GetMapping("/download.do")
     public void download(RequestParam param) {
         apiService.download(param);
+    }
+
+    @GetMapping("/upload.do")
+    public void upload(MultipartFile file, String path, String toPath) {
+//        apiService.download(param);
     }
 }
