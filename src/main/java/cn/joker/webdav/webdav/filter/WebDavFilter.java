@@ -25,13 +25,13 @@ public class WebDavFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        String sfd = request.getHeader("sec-fetch-dest");
+        String ua = request.getHeader("User-Agent");
 
         String depth = request.getHeader("depth");
 
         String basic = request.getHeader("Authorization");
 
-        if (StringUtils.hasText(depth) || StringUtils.hasText(basic)) {
+        if (StringUtils.hasText(depth) || StringUtils.hasText(basic) || ua.contains("WebDAV")) {
 
             if (!StringUtils.hasText(basic)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

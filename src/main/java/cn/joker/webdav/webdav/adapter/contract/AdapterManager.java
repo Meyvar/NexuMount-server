@@ -104,15 +104,21 @@ public class AdapterManager {
 
 
         try {
-            if (fileBucket.getPath().equals(this.uri)) {
+            if (fileBucket.getPath().contains(this.uri)) {
                 String updateTime = fileBucket.getUpdateTime();
                 if (StringUtils.hasText(updateTime)) {
                     fileResource.setDate(format.parse(updateTime));
                 }
             } else {
                 for (FileBucket bucket : fileBucketList) {
-                    if (bucket.getPath().equals(this.uri)) {
+                    if (bucket.getPath().contains(this.uri)) {
                         fileResource.setDate(format.parse(bucket.getUpdateTime()));
+
+                        fileResource.setHref(this.uri);
+
+                        String path = this.uri.substring(1, this.uri.length() - 1);
+                        fileResource.setName(path);
+
                         break;
                     }
                 }
@@ -120,12 +126,17 @@ public class AdapterManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        fileResource.setName("");
+
+        if (!StringUtils.hasText(fileResource.getName())){
+            fileResource.setName("");
+        }
 
         if (fileResource.getDate() == null) {
             fileResource = adapter.getFolderItself(fileBucket, uri);
         } else {
-            fileResource.setHref("/");
+            if (!StringUtils.hasText(fileResource.getHref())) {
+                fileResource.setHref("/");
+            }
         }
         return fileResource;
     }
@@ -217,7 +228,7 @@ public class AdapterManager {
 
     public boolean hasPath() {
         boolean has = adapter.hasPath(fileBucket.getSourcePath() + uri);
-        if (!has){
+        if (!has) {
             for (FileBucket bucket : fileBucketList) {
                 if (bucket.getPath().startsWith(uri)) {
                     has = true;

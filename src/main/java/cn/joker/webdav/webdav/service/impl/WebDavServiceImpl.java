@@ -127,7 +127,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
             xml.append("<d:displayname>").append(safeDisplayName).append("</d:displayname>");
 
-            if ("folder".equals(resource.getType())) {
+            if (!"folder".equals(resource.getType())) {
                 xml.append("<d:getcontenttype>").append(resource.getContentType()).append("</d:getcontenttype>");
             }
 
@@ -222,6 +222,11 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {
+        if (uri.contains(".DS_Store")){
+            resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+            return;
+        }
+
         AdapterManager adapterManager = new AdapterManager(uri);
         adapterManager.put();
         // 响应
