@@ -256,8 +256,8 @@ public class AdapterManager {
         return status;
     }
 
-    public void put() throws IOException {
-        adapter.put(fileBucket.getSourcePath() + uri);
+    public void put(InputStream inputStream) throws IOException {
+        adapter.put(fileBucket.getSourcePath() + uri, inputStream);
     }
 
     public RequestStatus move() throws IOException {

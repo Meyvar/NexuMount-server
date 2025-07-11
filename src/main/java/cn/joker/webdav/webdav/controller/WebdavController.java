@@ -44,8 +44,21 @@ public class WebdavController {
         apiService.download(param);
     }
 
-    @GetMapping("/upload.do")
-    public void upload(MultipartFile file, String path, String toPath) {
-//        apiService.download(param);
+    @PostMapping("/upload.do")
+    public Response<String> upload(MultipartFile file, String path, String toPath) {
+        apiService.upload(file, path, toPath);
+        return Response.success();
+    }
+
+    @PostMapping("/createFolder.do")
+    public Response<String> createFolder(RequestParam param) {
+        apiService.createFolder(param);
+        return Response.success();
+    }
+
+    @PostMapping("/createFile.do")
+    public Response<String> createFile(RequestParam param) {
+        apiService.createFile(param);
+        return Response.success();
     }
 }

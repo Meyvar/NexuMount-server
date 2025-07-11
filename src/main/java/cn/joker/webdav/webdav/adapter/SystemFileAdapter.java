@@ -47,10 +47,18 @@ public class SystemFileAdapter implements IFileAdapter {
 
 
         fileResource.setDate(new Date(file.lastModified()));
-        fileResource.setHref(fileBucket.getPath() + uri);
 
-        String path = fileBucket.getPath() + uri;
-        path = path.substring(0, path.length() - 1);
+        String bucketPath = fileBucket.getPath();
+        if ("/".equals(bucketPath)){
+            bucketPath = "";
+        }
+
+        fileResource.setHref(bucketPath + uri);
+
+        String path = bucketPath + uri;
+        if (path.endsWith("/")){
+            path = path.substring(0, path.length() - 1);
+        }
 
         String[] paths = path.split("/");
 
@@ -113,7 +121,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(String path) throws IOException {
+    public void put(String path, InputStream input) throws IOException {
         HttpServletRequest req = RequestHolder.getRequest();
         long contentLength = req.getContentLengthLong();
         System.out.println("PUT: " + path + ", content-length: " + contentLength);
@@ -129,8 +137,7 @@ public class SystemFileAdapter implements IFileAdapter {
             Files.createDirectories(targetPath.getParent());
         }
 
-        try (ServletInputStream input = req.getInputStream();
-             OutputStream output = Files.newOutputStream(targetPath)) {
+        try (OutputStream output = Files.newOutputStream(targetPath)) {
 
             byte[] buffer = new byte[8192];
             int bytesRead;

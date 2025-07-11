@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.net.URLDecoder;
@@ -147,5 +148,37 @@ public class ApiServiceImpl implements IApiService {
         HttpServletResponse response = RequestHolder.getResponse();
         response.setHeader("Content-disposition", "attachment; filename=" + fileName);
         load(param);
+    }
+
+    @Override
+    public void upload(MultipartFile file, String path, String toPath) {
+        RequestParam param = new RequestParam();
+        param.setPath(path + "/" + file.getOriginalFilename());
+        AdapterManager adapterManager = getAdapterManager(param);
+        try {
+            adapterManager.put(file.getInputStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void createFolder(RequestParam param) {
+        AdapterManager adapterManager = getAdapterManager(param);
+        try {
+            adapterManager.mkcol();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void createFile(RequestParam param) {
+        AdapterManager adapterManager = getAdapterManager(param);
+        try {
+            adapterManager.put(RequestHolder.getRequest().getInputStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

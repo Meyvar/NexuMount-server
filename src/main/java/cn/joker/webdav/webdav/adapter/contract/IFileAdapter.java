@@ -50,7 +50,7 @@ public interface IFileAdapter {
      *
      * @param path 上传路径
      */
-    void put(String path) throws IOException;
+    void put(String path, InputStream input) throws IOException;
 
     /**
      * 删除资源

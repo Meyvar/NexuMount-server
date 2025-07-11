@@ -228,7 +228,7 @@ public class WebDavServiceImpl implements IWebDavService {
         }
 
         AdapterManager adapterManager = new AdapterManager(uri);
-        adapterManager.put();
+        adapterManager.put(req.getInputStream());
         // 响应
         resp.setStatus(HttpServletResponse.SC_CREATED);
     }

@@ -78,7 +78,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(String path) {
+    public void put(String path, InputStream input) {
 
     }
 

@@ -31,8 +31,8 @@ spring:
       connect-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 25MB
+      max-file-size: -1
+      max-request-size: -1
 
 
 mybatis-plus:

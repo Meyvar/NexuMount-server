@@ -7,4 +7,5 @@ public class RequestParam {
 
     private String path;
 
+    private String toPath;
 }
