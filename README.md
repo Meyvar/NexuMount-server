@@ -4,7 +4,7 @@
 </div>
 <div align="center">
 
-  [![Static Badge](https://img.shields.io/badge/NexuMount_Server-blue?label=link&labelColor=green&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount-server)](https://github.com/Meyvar/NexuMount)
+  [![Static Badge](https://img.shields.io/badge/NexuMount-blue?label=link&labelColor=green&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount-server)](https://github.com/Meyvar/NexuMount)
   [![Static Badge](https://img.shields.io/badge/AGPL_3.0-green?label=license&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount%2Fblob%2Fmain%2FLICENSE)](https://github.com/Meyvar/NexuMount-server/blob/main/LICENSE)
 
 
