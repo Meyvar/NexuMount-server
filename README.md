@@ -3,8 +3,11 @@
     <p><em>🗂️ 一个支持多存储的文件列表程序，使用 Springboot3.x 和 element-plus。</em></p>
 </div>
 <div align="center">
-    <img alt="Static Badge" src="https://img.shields.io/badge/NexuMount-blue?label=link&labelColor=green&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount">
-    <img alt="Static Badge" src="https://img.shields.io/badge/AGPL_3.0-green?label=license&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount%2Fblob%2Fmain%2FLICENSE">
+
+  [![Static Badge](https://img.shields.io/badge/NexuMount_Server-blue?label=link&labelColor=green&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount-server)](https://github.com/Meyvar/NexuMount)
+  [![Static Badge](https://img.shields.io/badge/AGPL_3.0-green?label=license&link=https%3A%2F%2Fgithub.com%2FMeyvar%2FNexuMount%2Fblob%2Fmain%2FLICENSE)](https://github.com/Meyvar/NexuMount-server/blob/main/LICENSE)
+
+
 </div>
 
 ---
