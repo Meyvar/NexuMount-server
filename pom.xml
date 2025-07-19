@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>cn.joker.test</groupId>
-    <artifactId>demo</artifactId>
+    <artifactId>NexuMount</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>demo</name>
-    <description>demo</description>
+    <name>NexuMount</name>
+    <description>NexuMount</description>
     <properties>
         <java.version>21</java.version>
     </properties>

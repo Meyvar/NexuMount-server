@@ -4,8 +4,10 @@ import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.strategy.hooks.SaFirewallCheckHookForHttpMethod;
+import cn.joker.webdav.utils.RequestHolder;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -16,7 +18,12 @@ public class SaTokenConfigure implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handle -> {
             SaRouter.match("/api/**", "/api/public/**", r -> {
-                StpUtil.checkLogin();
+                try {
+                    String token = RequestHolder.getRequest().getParameter("token");
+                    StpUtil.getTokenSessionByToken(token);
+                } catch (Exception e) {
+                    StpUtil.checkLogin();
+                }
             });
 
         })).addPathPatterns("/**");

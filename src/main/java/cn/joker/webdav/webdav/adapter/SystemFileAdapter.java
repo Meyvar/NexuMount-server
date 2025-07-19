@@ -1,5 +1,6 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
@@ -197,7 +198,7 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public String getDownloadUrl(String path, String fileType) {
-        return "/api/pub/dav/load.do?path=" + path;
+        return "/api/pub/dav/load.do?path=" + path + "&token=" + StpUtil.getTokenValue();
     }
 
     @Override

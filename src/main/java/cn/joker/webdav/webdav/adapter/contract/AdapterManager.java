@@ -340,6 +340,11 @@ public class AdapterManager {
     }
 
     public String getDownloadUrl(String fileType) {
-        return adapter.getDownloadUrl(fileBucket.getPath() + uri, fileType);
+        String path = fileBucket.getPath();
+        if (path.equals("/")){
+            path = "";
+        }
+        path += uri;
+        return adapter.getDownloadUrl(path, fileType);
     }
 }
