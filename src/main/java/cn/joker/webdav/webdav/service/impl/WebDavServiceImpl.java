@@ -1,5 +1,8 @@
 package cn.joker.webdav.webdav.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.joker.webdav.business.entity.SysUser;
+import cn.joker.webdav.business.service.ISysUserService;
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
@@ -8,6 +11,7 @@ import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.utils.RequestHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -27,10 +31,24 @@ import java.util.Locale;
 @Service
 public class WebDavServiceImpl implements IWebDavService {
 
+    @Autowired
+    private ISysUserService sysUserService;
+
+    private String userPath;
+
     @Override
     public void sendContent() throws IOException {
         HttpServletRequest request = RequestHolder.getRequest();
         HttpServletResponse response = RequestHolder.getResponse();
+
+        SysUser sysUser = sysUserService.getById(StpUtil.getLoginId().toString());
+
+        userPath = sysUser.getRootPath();
+
+        if ("/".equals(userPath)) {
+            userPath = "";
+        }
+
 
         String method = request.getMethod();
         String uri = URLDecoder.decode(request.getRequestURI(), StandardCharsets.UTF_8);
@@ -71,7 +89,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handlePropFind(HttpServletResponse resp, Path path, String uri) throws IOException {
 
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
 
         if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -87,7 +105,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
         if ("1".equals(depth)) {
             RequestStatus status = adapterManager.propFind();
-            if (!status.isSuccess()){
+            if (!status.isSuccess()) {
                 resp.sendError(status.getCode(), status.getMessage());
                 return;
             }
@@ -163,7 +181,7 @@ public class WebDavServiceImpl implements IWebDavService {
     private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
         HttpServletRequest req = RequestHolder.getRequest();
 
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
 
         if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -222,12 +240,12 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {
-        if (uri.contains(".DS_Store")){
+        if (uri.contains(".DS_Store")) {
             resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
 
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
         adapterManager.put(req.getInputStream());
         // 响应
         resp.setStatus(HttpServletResponse.SC_CREATED);
@@ -235,7 +253,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
 
     private void handleDelete(HttpServletResponse resp, Path path, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
 
         RequestStatus status = adapterManager.delete();
         if (!status.isSuccess()) {
@@ -246,7 +264,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleMkcol(HttpServletResponse resp, Path path, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
 
         if (adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
@@ -286,7 +304,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
         RequestStatus status = adapterManager.move();
 
         if (status.isSuccess()) {
@@ -297,7 +315,7 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleCopy(HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
-        AdapterManager adapterManager = new AdapterManager(uri);
+        AdapterManager adapterManager = new AdapterManager(uri, userPath);
         RequestStatus status = adapterManager.copy();
         if (status.isSuccess()) {
             resp.setStatus(HttpServletResponse.SC_CREATED);

@@ -1,5 +1,8 @@
 package cn.joker.webdav.webdav.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.joker.webdav.business.entity.SysUser;
+import cn.joker.webdav.business.service.ISysUserService;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
@@ -9,6 +12,7 @@ import cn.joker.webdav.webdav.entity.RequestStatus;
 import cn.joker.webdav.webdav.service.IApiService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,8 +29,22 @@ import java.util.List;
 @Service
 public class ApiServiceImpl implements IApiService {
 
+    @Autowired
+    private ISysUserService sysUserService;
+
+    private String userPath;
+
     private AdapterManager getAdapterManager(RequestParam param) {
-        return new AdapterManager(param.getPath());
+
+        SysUser sysUser = sysUserService.getById(StpUtil.getLoginId().toString());
+
+        userPath = sysUser.getRootPath();
+
+        if ("/".equals(userPath)) {
+            userPath = "";
+        }
+
+        return new AdapterManager(param.getPath(), userPath);
     }
 
     @Override
@@ -45,9 +63,6 @@ public class ApiServiceImpl implements IApiService {
         for (FileResource resource : list) {
             if ("/".equals(param.getPath()) && !resource.getHref().startsWith("/")) {
                 resource.setHref(param.getPath() + resource.getHref());
-            }
-            if (resource.getType().equals("folder")) {
-
             }
         }
 

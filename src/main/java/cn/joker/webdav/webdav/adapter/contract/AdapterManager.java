@@ -45,7 +45,14 @@ public class AdapterManager {
 
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-    public AdapterManager(String uri) {
+    private String userPath;
+
+    public AdapterManager(String uri, String userPath) {
+        this.userPath = userPath;
+        if (uri.equals("/") && !this.userPath.isEmpty()) {
+            uri = "";
+        }
+        uri = this.userPath + uri;
         cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
 
         if ("/".equals(uri)) {
@@ -138,6 +145,7 @@ public class AdapterManager {
                 fileResource.setHref("/");
             }
         }
+        fileResource.setHref(fileResource.getHref().replaceFirst(this.userPath, ""));
         return fileResource;
     }
 
@@ -218,6 +226,10 @@ public class AdapterManager {
             }
         });
 
+        for (FileResource resource : list) {
+            resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
+        }
+
         status.setFileResources(list);
         return status;
     }
@@ -281,7 +293,7 @@ public class AdapterManager {
             return status;
         }
 
-        destPathRaw = destPathRaw.replaceFirst(fileBucket.getPath(), "");
+        destPathRaw = this.userPath + destPathRaw.replaceFirst(this.userPath, "");
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
 
@@ -323,8 +335,7 @@ public class AdapterManager {
             return status;
         }
 
-
-        destPathRaw = destPathRaw.replaceFirst(fileBucket.getPath(), "");
+        destPathRaw = this.userPath + destPathRaw.replaceFirst(this.userPath, "");
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
         if (adapter.hasPath(destPathRaw) && !overwrite) {
@@ -345,6 +356,7 @@ public class AdapterManager {
             path = "";
         }
         path += uri;
+        path = path.replaceFirst(this.userPath, "");
         return adapter.getDownloadUrl(path, fileType);
     }
 }

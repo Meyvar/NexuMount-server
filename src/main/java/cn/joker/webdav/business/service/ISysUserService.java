@@ -13,4 +13,6 @@ public interface ISysUserService {
     void save(SysUser sysUser);
 
     void delete(String uuid);
+
+    SysUser getById(String uuid);
 }

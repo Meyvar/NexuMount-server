@@ -26,6 +26,9 @@
     - [ ] [蓝奏云](https://www.lanzou.com/)
     - [ ] [115](https://115.com/)
 - [x] 部署方便，开箱即用
+- [x] 多用户管理
+- [x] 用户根路径控制
+- [ ] 用户权限管理
 - [x] 文件预览（PDF、markdown、代码、纯文本……）
 - [x] 视频和音频预览，
 - [x] Office 文档预览（docx、pptx、xlsx、...）

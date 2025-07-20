@@ -69,4 +69,9 @@ public class SysUserServiceImpl implements ISysUserService {
         keyValueService.deleteBusinessData("sysUser", uuid);
     }
 
+    @Override
+    public SysUser getById(String uuid) {
+        return  keyValueService.findBusinessData("sysUser", uuid, SysUser.class);
+    }
+
 }
