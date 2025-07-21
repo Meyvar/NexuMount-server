@@ -280,7 +280,7 @@ public class AdapterManager {
 
         String destHeader = request.getHeader("Destination");
 
-        if (destHeader == null || !destHeader.startsWith("http")) {
+        if (destHeader == null) {
             status.setCode(HttpServletResponse.SC_BAD_REQUEST);
             return status;
         }
@@ -322,7 +322,7 @@ public class AdapterManager {
 
         String destHeader = request.getHeader("Destination");
 
-        if (destHeader == null || !destHeader.startsWith("http")) {
+        if (destHeader == null) {
             status.setCode(HttpServletResponse.SC_BAD_REQUEST);
             return status;
         }

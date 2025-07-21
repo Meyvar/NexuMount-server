@@ -196,4 +196,24 @@ public class ApiServiceImpl implements IApiService {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public void move(RequestParam param) {
+        AdapterManager adapterManager = getAdapterManager(param);
+        try {
+            adapterManager.move();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void copy(RequestParam param) {
+        AdapterManager adapterManager = getAdapterManager(param);
+        try {
+            adapterManager.copy();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

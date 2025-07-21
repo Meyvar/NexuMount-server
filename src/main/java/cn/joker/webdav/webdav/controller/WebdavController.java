@@ -23,7 +23,7 @@ public class WebdavController {
         return Response.success(apiService.list(param));
     }
 
-    @GetMapping("/delete.do")
+    @PostMapping("/delete.do")
     public Response<String> delete(RequestParam param) {
         apiService.delete(param);
         return Response.success();
@@ -59,6 +59,19 @@ public class WebdavController {
     @PostMapping("/createFile.do")
     public Response<String> createFile(RequestParam param) {
         apiService.createFile(param);
+        return Response.success();
+    }
+
+    @PostMapping("/move.do")
+    public Response<String> move(RequestParam param) {
+        apiService.move(param);
+        return Response.success();
+    }
+
+
+    @PostMapping("/copy.do")
+    public Response<String> copy(RequestParam param) {
+        apiService.copy(param);
         return Response.success();
     }
 }

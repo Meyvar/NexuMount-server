@@ -23,4 +23,8 @@ public interface IApiService {
     void createFolder(RequestParam param);
 
     void createFile(RequestParam param);
+
+    void move(RequestParam param);
+
+    void copy(RequestParam param);
 }
