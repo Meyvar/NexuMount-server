@@ -31,6 +31,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
             SaRouter.match("/api/pub/dav/createFolder.do", r -> StpUtil.checkPermission("createOrUpload"));
             SaRouter.match("/api/pub/dav/createFile.do", r -> StpUtil.checkPermission("createOrUpload"));
             SaRouter.match("/api/pub/dav/move.do", r -> StpUtil.checkPermission("move"));
+            SaRouter.match("/api/pub/dav/copy.do", r -> StpUtil.checkPermission("copy"));
         })).addPathPatterns("/**");
     }
 

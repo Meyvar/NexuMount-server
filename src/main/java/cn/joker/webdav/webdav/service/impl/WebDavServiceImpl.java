@@ -68,13 +68,43 @@ public class WebDavServiceImpl implements IWebDavService {
             case "OPTIONS" -> handleOptions(response);
             case "PROPFIND" -> handlePropFind(response, path, uri);
             case "GET" -> handleGet(response, path, uri);
-            case "PUT" -> handlePut(request, response, path, uri);
-            case "DELETE" -> handleDelete(response, path, uri);
-            case "MKCOL" -> handleMkcol(response, path, uri);
+            case "PUT" -> {
+                if (!sysUser.getPermissions().contains("createOrUpload")){
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                handlePut(request, response, path, uri);
+            }
+            case "DELETE" -> {
+                if (!sysUser.getPermissions().contains("remove")){
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                handleDelete(response, path, uri);
+            }
+            case "MKCOL" -> {
+                if (!sysUser.getPermissions().contains("createOrUpload")){
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                handleMkcol(response, path, uri);
+            }
             case "LOCK" -> handleLock(request, response, path);
             case "UNLOCK" -> handleUnlock(request, response, path);
-            case "MOVE" -> handleMove(request, response, path, uri);
-            case "COPY" -> handleCopy(response, path, uri);
+            case "MOVE" -> {
+                if (!sysUser.getPermissions().contains("move")){
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                handleMove(request, response, path, uri);
+            }
+            case "COPY" -> {
+                if (!sysUser.getPermissions().contains("copy")){
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                handleCopy(response, path, uri);
+            }
             default -> response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
         }
     }
