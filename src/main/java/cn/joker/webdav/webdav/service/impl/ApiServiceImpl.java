@@ -51,7 +51,7 @@ public class ApiServiceImpl implements IApiService {
     public List<FileResource> list(RequestParam param) {
         RequestStatus status = null;
         try {
-            status = getAdapterManager(param).propFind();
+            status = getAdapterManager(param).propFind(param.isRefresh());
             if (!status.isSuccess()) {
                 throw new RuntimeException(status.getMessage());
             }
@@ -98,57 +98,7 @@ public class ApiServiceImpl implements IApiService {
     @Override
     public void load(RequestParam param) {
         try {
-            HttpServletResponse resp = RequestHolder.getResponse();
-            HttpServletRequest req = RequestHolder.getRequest();
-
-            GetFileResource fileResource = getAdapterManager(param).get();
-            resp.setContentLength(Math.toIntExact(fileResource.getFileSize()));
-
-            File file = new File(fileResource.getFilePath());
-
-            resp.setContentType(Files.probeContentType(file.toPath()));
-
-
-            String rangeHeader = req.getHeader("Range");
-            if (StringUtils.hasText(rangeHeader)) {
-                String[] ranges = rangeHeader.replace("bytes=", "").split("-");
-                long start = Long.parseLong(ranges[0]);
-                long end = (ranges.length > 1 && !ranges[1].isEmpty())
-                        ? Long.parseLong(ranges[1])
-                        : file.length() - 1;
-
-                long contentLength = end - start + 1;
-
-                resp.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
-                resp.setHeader("Content-Type", Files.probeContentType(file.toPath()));
-                resp.setHeader("Accept-Ranges", "bytes");
-                resp.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + file.length());
-                resp.setHeader("Content-Length", String.valueOf(contentLength));
-
-                RandomAccessFile raf = new RandomAccessFile(file, "r");
-                OutputStream out = resp.getOutputStream();
-
-                raf.seek(start);
-
-                byte[] buffer = new byte[8192];
-                long remaining = contentLength;
-
-                while (remaining > 0) {
-                    int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
-                    if (read == -1) {
-                        break;
-                    }
-                    out.write(buffer, 0, read);
-                    remaining -= read;
-                }
-                raf.close();
-                out.flush();
-
-            } else {
-                InputStream inputStream = new FileInputStream(file);
-                inputStream.transferTo(resp.getOutputStream());
-                inputStream.close();
-            }
+            getAdapterManager(param).get();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -172,7 +122,7 @@ public class ApiServiceImpl implements IApiService {
         AdapterManager adapterManager = getAdapterManager(param);
         try {
             adapterManager.put(file.getInputStream());
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -192,7 +142,7 @@ public class ApiServiceImpl implements IApiService {
         AdapterManager adapterManager = getAdapterManager(param);
         try {
             adapterManager.put(RequestHolder.getRequest().getInputStream());
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

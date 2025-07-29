@@ -9,7 +9,11 @@ import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
@@ -19,16 +23,18 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @AdapterComponent(title = "系统文件适配器")
 public class SystemFileAdapter implements IFileAdapter {
 
+    @Autowired
+    private CacheManager cacheManager;
+
     @Override
-    public boolean hasPath(String path) {
-        File file = new File(path);
+    public boolean hasPath(FileBucket fileBucket, String path) {
+        String filePath = fileBucket.getSourcePath() + path;
+        File file = new File(filePath);
         return file.exists();
     }
 
@@ -50,14 +56,14 @@ public class SystemFileAdapter implements IFileAdapter {
         fileResource.setDate(new Date(file.lastModified()));
 
         String bucketPath = fileBucket.getPath();
-        if ("/".equals(bucketPath)){
+        if ("/".equals(bucketPath)) {
             bucketPath = "";
         }
 
         fileResource.setHref(bucketPath + uri);
 
         String path = bucketPath + uri;
-        if (path.endsWith("/")){
+        if (path.endsWith("/")) {
             path = path.substring(0, path.length() - 1);
         }
 
@@ -71,11 +77,32 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public List<FileResource> propFind(FileBucket fileBucket, String uri) throws IOException {
+    public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
         if (!uri.endsWith("/")) {
             uri += "/";
         }
         Path filePath = Path.of(fileBucket.getSourcePath() + uri);
+
+
+        Cache cache = cacheManager.getCache("fileResourceMap");
+
+        Map<String, List<FileResource>> map = cache.get("systemFileAdapter:" + fileBucket.getPath(), Map.class);
+
+        if (map == null) {
+            map = new HashMap<>();
+        }
+
+        List<FileResource> resourceList = map.get(filePath.toString());
+
+        if (resourceList != null && !resourceList.isEmpty()) {
+            if (refresh) {
+                map.remove(filePath.toString());
+            } else {
+                return new ArrayList<>(resourceList);
+            }
+        }
+
+
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
 
@@ -107,25 +134,68 @@ public class SystemFileAdapter implements IFileAdapter {
                 ressource.setHref(fileBucket.getPath() + uri + f.getName());
                 list.add(ressource);
             }
+            map.put(filePath.toString(), new ArrayList<>(list));
+            cache.put("systemFileAdapter:" + filePath, map);
         }
 
         return list;
     }
 
     @Override
-    public GetFileResource get(String path) throws IOException {
-        GetFileResource resource = new GetFileResource();
+    public void get(FileBucket fileBucket, String path) throws IOException {
+        HttpServletRequest req = RequestHolder.getRequest();
+        HttpServletResponse resp = RequestHolder.getResponse();
+
         File file = new File(path);
-        resource.setFilePath(file.getPath());
-        resource.setFileSize(file.length());
-        return resource;
+        resp.setStatus(HttpServletResponse.SC_OK);
+        resp.setContentLength(Math.toIntExact(file.length()));
+        resp.setContentType(Files.probeContentType(file.toPath()));
+
+        String rangeHeader = req.getHeader("Range");
+        if (StringUtils.hasText(rangeHeader)) {
+            String[] ranges = rangeHeader.replace("bytes=", "").split("-");
+            long start = Long.parseLong(ranges[0]);
+            long end = (ranges.length > 1 && !ranges[1].isEmpty())
+                    ? Long.parseLong(ranges[1])
+                    : file.length() - 1;
+
+            long contentLength = end - start + 1;
+
+            resp.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+            resp.setHeader("Content-Type", Files.probeContentType(file.toPath()));
+            resp.setHeader("Accept-Ranges", "bytes");
+            resp.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + file.length());
+            resp.setHeader("Content-Length", String.valueOf(contentLength));
+
+            try (RandomAccessFile raf = new RandomAccessFile(file, "r");
+                 OutputStream out = resp.getOutputStream()) {
+
+                raf.seek(start);
+
+                byte[] buffer = new byte[8192];
+                long remaining = contentLength;
+
+                while (remaining > 0) {
+                    int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+                    if (read == -1) {
+                        break;
+                    }
+                    out.write(buffer, 0, read);
+                    remaining -= read;
+                }
+                raf.close();
+                out.flush();
+            }
+        } else {
+            InputStream inputStream = new FileInputStream(file);
+            inputStream.transferTo(resp.getOutputStream());
+            inputStream.close();
+        }
     }
 
     @Override
-    public void put(String path, InputStream input) throws IOException {
+    public void put(FileBucket fileBucket, String path, InputStream input) throws IOException {
         HttpServletRequest req = RequestHolder.getRequest();
-        long contentLength = req.getContentLengthLong();
-        System.out.println("PUT: " + path + ", content-length: " + contentLength);
 
         String mTime = req.getHeader("X-Oc-Mtime");
         if (!StringUtils.hasText(mTime)) {
@@ -136,6 +206,7 @@ public class SystemFileAdapter implements IFileAdapter {
         Path targetPath = Paths.get(path);
         if (targetPath.getParent() != null) {
             Files.createDirectories(targetPath.getParent());
+            cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
         }
 
         try (OutputStream output = Files.newOutputStream(targetPath)) {
@@ -161,25 +232,29 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void delete(String path) throws IOException {
+    public void delete(FileBucket fileBucket, String path) throws IOException {
         Files.delete(Paths.get(path));
+        cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
     }
 
     @Override
-    public void mkcol(String path) throws IOException {
+    public void mkcol(FileBucket fileBucket, String path) throws IOException {
         Files.createDirectories(Paths.get(path));
+        cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
     }
 
     @Override
-    public void move(String sourcePath, String destPath) throws IOException {
+    public void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
         Files.createDirectories(Paths.get(destPath).getParent());
         Files.move(Paths.get(sourcePath), Paths.get(destPath));
+        cleanCache(fileBucket.getPath(), Paths.get(destPath).getParent().toString());
     }
 
     @Override
-    public void copy(String sourcePath, String destPath) throws IOException {
+    public void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
         File sourceFile = Paths.get(sourcePath).toFile();
         File destFile = Paths.get(destPath).toFile();
+        cleanCache(fileBucket.getPath(), Paths.get(destPath).getParent().toString());
         if (sourceFile.isDirectory()) {
             Files.walk(sourceFile.toPath()).forEach(source -> {
                 try {
@@ -197,12 +272,20 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(String path, String fileType) {
+    public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) {
         return "/api/pub/dav/load.do?path=" + path + "&token=" + StpUtil.getTokenValue();
     }
 
     @Override
     public String workStatus(FileBucket fileBucket) {
         return "work";
+    }
+
+    private void cleanCache(String path, String id) {
+        Cache cache = cacheManager.getCache("fileResourceMap");
+        Map<String, List<FileResource>> map = cache.get("systemFileAdapter:" + path, Map.class);
+        if (map != null) {
+            map.remove(id);
+        }
     }
 }

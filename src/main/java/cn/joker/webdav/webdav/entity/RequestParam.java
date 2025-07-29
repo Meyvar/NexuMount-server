@@ -8,4 +8,6 @@ public class RequestParam {
     private String path;
 
     private String token;
+
+    private boolean refresh;
 }

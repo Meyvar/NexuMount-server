@@ -37,7 +37,7 @@ public class WebDavServiceImpl implements IWebDavService {
     private String userPath;
 
     @Override
-    public void sendContent() throws IOException {
+    public void sendContent() throws Exception {
         HttpServletRequest request = RequestHolder.getRequest();
         HttpServletResponse response = RequestHolder.getResponse();
 
@@ -69,21 +69,21 @@ public class WebDavServiceImpl implements IWebDavService {
             case "PROPFIND" -> handlePropFind(response, path, uri);
             case "GET" -> handleGet(response, path, uri);
             case "PUT" -> {
-                if (!sysUser.getPermissions().contains("createOrUpload")){
+                if (!sysUser.getPermissions().contains("createOrUpload")) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
                 handlePut(request, response, path, uri);
             }
             case "DELETE" -> {
-                if (!sysUser.getPermissions().contains("remove")){
+                if (!sysUser.getPermissions().contains("remove")) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
                 handleDelete(response, path, uri);
             }
             case "MKCOL" -> {
-                if (!sysUser.getPermissions().contains("createOrUpload")){
+                if (!sysUser.getPermissions().contains("createOrUpload")) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
@@ -92,14 +92,14 @@ public class WebDavServiceImpl implements IWebDavService {
             case "LOCK" -> handleLock(request, response, path);
             case "UNLOCK" -> handleUnlock(request, response, path);
             case "MOVE" -> {
-                if (!sysUser.getPermissions().contains("move")){
+                if (!sysUser.getPermissions().contains("move")) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
                 handleMove(request, response, path, uri);
             }
             case "COPY" -> {
-                if (!sysUser.getPermissions().contains("copy")){
+                if (!sysUser.getPermissions().contains("copy")) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
@@ -134,7 +134,7 @@ public class WebDavServiceImpl implements IWebDavService {
         list.add(adapterManager.getFolderItself());
 
         if ("1".equals(depth)) {
-            RequestStatus status = adapterManager.propFind();
+            RequestStatus status = adapterManager.propFind(false);
             if (!status.isSuccess()) {
                 resp.sendError(status.getCode(), status.getMessage());
                 return;
@@ -209,67 +209,16 @@ public class WebDavServiceImpl implements IWebDavService {
     }
 
     private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
-        HttpServletRequest req = RequestHolder.getRequest();
 
         AdapterManager adapterManager = new AdapterManager(uri, userPath);
 
         if (!adapterManager.hasPath()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
         }
-
-        resp.setStatus(HttpServletResponse.SC_OK);
-        GetFileResource fileResource = adapterManager.get();
-        resp.setContentLength(Math.toIntExact(fileResource.getFileSize()));
-
-        File file = new File(fileResource.getFilePath());
-
-        resp.setContentType(Files.probeContentType(file.toPath()));
-
-
-        String rangeHeader = req.getHeader("Range");
-        if (StringUtils.hasText(rangeHeader)) {
-            String[] ranges = rangeHeader.replace("bytes=", "").split("-");
-            long start = Long.parseLong(ranges[0]);
-            long end = (ranges.length > 1 && !ranges[1].isEmpty())
-                    ? Long.parseLong(ranges[1])
-                    : file.length() - 1;
-
-            long contentLength = end - start + 1;
-
-            resp.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
-            resp.setHeader("Content-Type", Files.probeContentType(file.toPath()));
-            resp.setHeader("Accept-Ranges", "bytes");
-            resp.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + file.length());
-            resp.setHeader("Content-Length", String.valueOf(contentLength));
-
-            try (RandomAccessFile raf = new RandomAccessFile(file, "r");
-                 OutputStream out = resp.getOutputStream()) {
-
-                raf.seek(start);
-
-                byte[] buffer = new byte[8192];
-                long remaining = contentLength;
-
-                while (remaining > 0) {
-                    int read = raf.read(buffer, 0, (int) Math.min(buffer.length, remaining));
-                    if (read == -1) {
-                        break;
-                    }
-                    out.write(buffer, 0, read);
-                    remaining -= read;
-                }
-                raf.close();
-                out.flush();
-            }
-        } else {
-            InputStream inputStream = new FileInputStream(file);
-            inputStream.transferTo(resp.getOutputStream());
-            inputStream.close();
-        }
+        adapterManager.get();
     }
 
-    private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws IOException {
+    private void handlePut(HttpServletRequest req, HttpServletResponse resp, Path path, String uri) throws Exception {
         if (uri.contains(".DS_Store")) {
             resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;

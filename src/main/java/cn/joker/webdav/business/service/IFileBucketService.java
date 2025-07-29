@@ -10,7 +10,7 @@ public interface IFileBucketService {
 
     List<FileBucket> findAll();
 
-    List<Map<String, String>> getFileAdapterList();
+    List<Map<String, Object>> getFileAdapterList();
 
     void save(FileBucket fileBucket);
 

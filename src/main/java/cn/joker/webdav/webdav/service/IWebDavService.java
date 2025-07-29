@@ -4,6 +4,6 @@ import java.io.IOException;
 
 public interface IWebDavService {
 
-    void sendContent() throws IOException;
+    void sendContent() throws Exception;
 
 }

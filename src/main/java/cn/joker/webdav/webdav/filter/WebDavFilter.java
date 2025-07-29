@@ -57,7 +57,7 @@ public class WebDavFilter extends OncePerRequestFilter {
 
             try {
                 webDavService.sendContent();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             return;

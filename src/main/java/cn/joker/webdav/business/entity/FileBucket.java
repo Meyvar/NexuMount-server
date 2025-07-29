@@ -1,8 +1,11 @@
 package cn.joker.webdav.business.entity;
 
+import com.alibaba.fastjson2.JSONObject;
 import lombok.Data;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Data
 public class FileBucket {
@@ -24,4 +27,6 @@ public class FileBucket {
     private String aesKey;
 
     private String updateTime;
+
+    private JSONObject fieldJson =  new JSONObject();
 }

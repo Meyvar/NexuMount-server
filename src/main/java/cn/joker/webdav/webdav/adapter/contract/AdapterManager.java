@@ -134,7 +134,7 @@ public class AdapterManager {
             e.printStackTrace();
         }
 
-        if (!StringUtils.hasText(fileResource.getName())){
+        if (!StringUtils.hasText(fileResource.getName())) {
             fileResource.setName("");
         }
 
@@ -154,7 +154,7 @@ public class AdapterManager {
      *
      * @return
      */
-    public RequestStatus propFind() throws IOException {
+    public RequestStatus propFind(boolean refresh) throws IOException {
         RequestStatus status = new RequestStatus();
 
         if (!hasPath()) {
@@ -165,11 +165,11 @@ public class AdapterManager {
         }
 
         if ("rootAdapter".equals(fileBucket.getAdapter())) {
-            status.setFileResources(adapter.propFind(fileBucket, uri));
+            status.setFileResources(adapter.propFind(fileBucket, uri, refresh));
             return status;
         }
 
-        List<FileResource> list = adapter.propFind(fileBucket, uri);
+        List<FileResource> list = adapter.propFind(fileBucket, uri, refresh);
 
         for (FileBucket bucket : fileBucketList) {
             FileResource resource = new FileResource();
@@ -234,12 +234,12 @@ public class AdapterManager {
         return status;
     }
 
-    public GetFileResource get() throws IOException {
-        return adapter.get(fileBucket.getSourcePath() + uri);
+    public void get() throws IOException {
+        adapter.get(fileBucket, fileBucket.getSourcePath() + uri);
     }
 
     public boolean hasPath() {
-        boolean has = adapter.hasPath(fileBucket.getSourcePath() + uri);
+        boolean has = adapter.hasPath(fileBucket, uri);
         if (!has) {
             for (FileBucket bucket : fileBucketList) {
                 if (bucket.getPath().startsWith(uri)) {
@@ -252,7 +252,7 @@ public class AdapterManager {
     }
 
     public void mkcol() throws IOException {
-        adapter.mkcol(fileBucket.getSourcePath() + uri);
+        adapter.mkcol(fileBucket, fileBucket.getSourcePath() + uri);
     }
 
     public RequestStatus delete() throws IOException {
@@ -264,12 +264,12 @@ public class AdapterManager {
         } else {
             status.setSuccess(true);
         }
-        adapter.delete(fileBucket.getSourcePath() + uri);
+        adapter.delete(fileBucket, fileBucket.getSourcePath() + uri);
         return status;
     }
 
-    public void put(InputStream inputStream) throws IOException {
-        adapter.put(fileBucket.getSourcePath() + uri, inputStream);
+    public void put(InputStream inputStream) throws Exception {
+        adapter.put(fileBucket, fileBucket.getSourcePath() + uri, inputStream);
     }
 
     public RequestStatus move() throws IOException {
@@ -297,9 +297,9 @@ public class AdapterManager {
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
 
-        if (adapter.hasPath(destPathRaw.toString())) {
+        if (adapter.hasPath(fileBucket, destPathRaw.toString())) {
             if (overwrite) {
-                adapter.delete(destPathRaw.toString());
+                adapter.delete(fileBucket, destPathRaw.toString());
             } else {
                 status.setCode(HttpServletResponse.SC_PRECONDITION_FAILED);
                 return status;
@@ -307,7 +307,7 @@ public class AdapterManager {
         }
 
 
-        adapter.move(fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        adapter.move(fileBucket, fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
@@ -338,25 +338,25 @@ public class AdapterManager {
         destPathRaw = this.userPath + destPathRaw.replaceFirst(this.userPath, "");
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
-        if (adapter.hasPath(destPathRaw) && !overwrite) {
+        if (adapter.hasPath(fileBucket, destPathRaw) && !overwrite) {
             status.setCode(HttpServletResponse.SC_BAD_REQUEST);
             status.setMessage("Destination already exists！");
             return status;
         }
 
-        adapter.copy(fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        adapter.copy(fileBucket, fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
     }
 
-    public String getDownloadUrl(String fileType) {
+    public String getDownloadUrl(String fileType) throws IOException {
         String path = fileBucket.getPath();
-        if (path.equals("/")){
+        if (path.equals("/")) {
             path = "";
         }
         path += uri;
         path = path.replaceFirst(this.userPath, "");
-        return adapter.getDownloadUrl(path, fileType);
+        return adapter.getDownloadUrl(fileBucket, path, fileType);
     }
 }

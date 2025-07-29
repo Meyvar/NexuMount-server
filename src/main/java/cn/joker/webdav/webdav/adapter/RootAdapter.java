@@ -25,7 +25,7 @@ import java.util.List;
 public class RootAdapter implements IFileAdapter {
 
     @Override
-    public boolean hasPath(String path) {
+    public boolean hasPath(FileBucket fileBucket, String path) {
         return true;
     }
 
@@ -41,7 +41,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public List<FileResource> propFind(FileBucket fileBucket, String uri) {
+    public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) {
         CacheManager cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
         Cache<Object, Object> nativeCache = ((CaffeineCache) cacheManager.getCache("fileBucketList")).getNativeCache();
 
@@ -73,37 +73,36 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public GetFileResource get(String path) {
-        return null;
+    public void get(FileBucket fileBucket, String path) {
     }
 
     @Override
-    public void put(String path, InputStream input) {
-
-    }
-
-    @Override
-    public void delete(String path) {
+    public void put(FileBucket fileBucket, String path, InputStream input) {
 
     }
 
     @Override
-    public void mkcol(String path) {
+    public void delete(FileBucket fileBucket, String path) {
 
     }
 
     @Override
-    public void move(String sourcePath, String destPath) throws IOException {
+    public void mkcol(FileBucket fileBucket, String path) {
 
     }
 
     @Override
-    public void copy(String sourcePath, String destPath) throws IOException {
+    public void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
 
     }
 
     @Override
-    public String getDownloadUrl(String path, String fileType) {
+    public void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
+
+    }
+
+    @Override
+    public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) {
         return "";
     }
 

@@ -19,7 +19,7 @@ public interface IFileAdapter {
      * @param path 资源路径
      * @return
      */
-    boolean hasPath(String path);
+    boolean hasPath(FileBucket fileBucket, String path);
 
 
     /**
@@ -32,54 +32,60 @@ public interface IFileAdapter {
     /**
      * 文件列表
      *
-     * @param path 文件路径
+     * @param fileBucket 文件桶
      * @param uri  请求地址
      * @return 文件list
      */
-    List<FileResource> propFind(FileBucket fileBucket, String uri) throws IOException;
+    List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException;
 
     /**
      * 获取资源
      *
+     * @param fileBucket 文件桶
      * @param path 资源路径
      */
-    GetFileResource get(String path) throws IOException;
+    void get(FileBucket fileBucket, String path) throws IOException;
 
     /**
      * 上传资源
      *
+     * @param fileBucket 文件桶
      * @param path 上传路径
      */
-    void put(String path, InputStream input) throws IOException;
+    void put(FileBucket fileBucket, String path, InputStream input) throws Exception;
 
     /**
      * 删除资源
      *
+     * @param fileBucket 文件桶
      * @param path 删除路径
      */
-    void delete(String path) throws IOException;
+    void delete(FileBucket fileBucket, String path) throws IOException;
 
     /**
      * 创建文件夹
      *
+     * @param fileBucket 文件桶
      * @param path 创建路径
      */
-    void mkcol(String path) throws IOException;
+    void mkcol(FileBucket fileBucket, String path) throws IOException;
 
     /**
      * 移动资源
      *
+     * @param fileBucket 文件桶
      * @param sourcePath 源路径
      */
-    void move(String sourcePath, String destPath)  throws IOException;
+    void move(FileBucket fileBucket, String sourcePath, String destPath)  throws IOException;
 
     /**
      * 文件复制
+     * @param fileBucket 文件桶
      * @param sourcePath
      * @param destPath
      * @throws IOException
      */
-    void copy(String sourcePath, String destPath) throws IOException;
+    void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException;
 
 
     /**
@@ -88,7 +94,7 @@ public interface IFileAdapter {
      * @param fileType
      * @return
      */
-    String getDownloadUrl(String path, String fileType);
+    String getDownloadUrl(FileBucket fileBucket, String path, String fileType) throws IOException;
 
 
     /**

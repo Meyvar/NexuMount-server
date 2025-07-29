@@ -5,6 +5,7 @@ import cn.joker.webdav.business.entity.SysUser;
 import cn.joker.webdav.business.service.IFileBucketService;
 import cn.joker.webdav.result.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,12 +28,12 @@ public class FileBucketController {
     }
 
     @RequestMapping("/getFileAdapterList.do")
-    public Response<List<Map<String, String>>> getFileAdapterList() {
+    public Response<List<Map<String, Object>>> getFileAdapterList() {
         return success(fileBucketService.getFileAdapterList());
     }
 
     @RequestMapping("/save.do")
-    public Response<String> save(FileBucket fileBucket) {
+    public Response<String> save(@RequestBody FileBucket fileBucket) {
         fileBucketService.save(fileBucket);
         return success();
     }

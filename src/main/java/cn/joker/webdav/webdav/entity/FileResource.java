@@ -20,4 +20,6 @@ public class FileResource {
     private String href;
 
     private String contentType;
+
+    private String id;
 }

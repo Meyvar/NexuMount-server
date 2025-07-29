@@ -6,6 +6,7 @@ import cn.joker.webdav.database.service.IKeyValueService;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
+import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.cache.Cache;
@@ -14,6 +15,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -35,12 +37,12 @@ public class FileBucketServiceImpl implements IFileBucketService {
     }
 
     @Override
-    public List<Map<String, String>> getFileAdapterList() {
+    public List<Map<String, Object>> getFileAdapterList() {
         Map<String, Object> beans = applicationContext.getBeansWithAnnotation(AdapterComponent.class);
-        List<Map<String, String>> list = new ArrayList<>();
+        List<Map<String, Object>> list = new ArrayList<>();
 
         for (Map.Entry<String, Object> entry : beans.entrySet()) {
-            Map<String, String> map = new HashMap<>();
+            Map<String, Object> map = new HashMap<>();
 
             Object bean = entry.getValue();
             Class<?> clazz = bean.getClass();
@@ -48,6 +50,21 @@ public class FileBucketServiceImpl implements IFileBucketService {
 
             map.put("name", entry.getKey());
             map.put("title", annotation.title());
+
+            List<Map<String, String>> fieldList = new ArrayList<>();
+
+            for (Field field : clazz.getDeclaredFields()) {
+                if (!field.isAnnotationPresent(ParamAnnotation.class)){
+                    continue;
+                }
+
+                Map<String, String> fieldMap = new HashMap<>();
+                fieldMap.put("name", field.getName());
+                ParamAnnotation  paramAnnotation = field.getAnnotation(ParamAnnotation.class);
+                fieldMap.put("label", paramAnnotation.label());
+                fieldList.add(fieldMap);
+            }
+            map.put("fields", fieldList);
 
             list.add(map);
         }
