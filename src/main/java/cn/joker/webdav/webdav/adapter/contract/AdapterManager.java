@@ -234,7 +234,7 @@ public class AdapterManager {
         return status;
     }
 
-    public void get() throws IOException {
+    public void get() throws Exception {
         adapter.get(fileBucket, fileBucket.getSourcePath() + uri);
     }
 

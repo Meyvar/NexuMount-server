@@ -88,7 +88,7 @@ public class ApiServiceImpl implements IApiService {
         try {
             AdapterManager adapterManager = getAdapterManager(param);
             resource = adapterManager.getFolderItself();
-            resource.setHref(adapterManager.getDownloadUrl(resource.getContentType()));
+//            resource.setHref(adapterManager.getDownloadUrl(resource.getContentType()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -99,7 +99,7 @@ public class ApiServiceImpl implements IApiService {
     public void load(RequestParam param) {
         try {
             getAdapterManager(param).get();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

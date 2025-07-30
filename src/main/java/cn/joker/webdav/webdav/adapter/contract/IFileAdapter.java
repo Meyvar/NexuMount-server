@@ -44,7 +44,7 @@ public interface IFileAdapter {
      * @param fileBucket 文件桶
      * @param path 资源路径
      */
-    void get(FileBucket fileBucket, String path) throws IOException;
+    void get(FileBucket fileBucket, String path) throws Exception;
 
     /**
      * 上传资源

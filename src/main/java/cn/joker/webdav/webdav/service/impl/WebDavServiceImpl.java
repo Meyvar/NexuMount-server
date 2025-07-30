@@ -208,7 +208,7 @@ public class WebDavServiceImpl implements IWebDavService {
         return encoded.isEmpty() ? "/" : encoded.toString();
     }
 
-    private void handleGet(HttpServletResponse resp, Path path, String uri) throws IOException {
+    private void handleGet(HttpServletResponse resp, Path path, String uri) throws Exception {
 
         AdapterManager adapterManager = new AdapterManager(uri, userPath);
 

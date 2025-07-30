@@ -15,17 +15,23 @@ import cn.joker.webdav.webdav.entity.GetFileResource;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Synchronized;
+import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -88,7 +94,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         }
 
         fileResource.setContentType(fileBucket.getFieldJson().getString("contentType"));
-        if (!uri.endsWith("/")) {
+        if (!uri.endsWith("/") && fileResource.getType().equals("folder")) {
             uri += "/";
         }
         fileResource.setHref(fileBucket.getPath() + uri);
@@ -129,7 +135,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     @Override
-    public void get(FileBucket fileBucket, String path) throws IOException {
+    public void get(FileBucket fileBucket, String path) throws Exception {
         FileResource fileResource = getFolderItself(fileBucket, path);
         String downloadUrl = getDownloadUrl(fileBucket, path, fileResource.getContentType());
         RequestHolder.getResponse().sendRedirect(downloadUrl);
@@ -142,6 +148,24 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         Path filePath = Paths.get(path);
 
         String id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
+
+        if (!StringUtils.hasText(id) && !hasPath(fileBucket, filePath.getParent().toString())) {
+            synchronized (this) {
+                String[] parts = filePath.getParent().toString().split("/");
+                StringBuilder current = new StringBuilder();
+
+                for (String part : parts) {
+                    if (part.isEmpty()) continue;
+                    current.append("/").append(part);
+
+                    if (!hasPath(fileBucket, current.toString())) {
+                        mkcol(fileBucket, current.toString());
+                    }
+                }
+
+                id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
+            }
+        }
 
         cleanCache(fileBucket.getFieldJson().getString("authorization"), id);
 
@@ -346,10 +370,10 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             if (jsonObject.getBoolean("success")) {
                 return jsonObject.getJSONObject("data").getString("url");
             } else {
-                return "";
+                throw new RuntimeException(jsonObject.getString("message"));
             }
         } else {
-            return "";
+            throw new RuntimeException("status is " + response.getStatus());
         }
     }
 
@@ -447,6 +471,10 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
 
             JSONArray itemArr = jsonObject.getJSONObject("data").getJSONArray("items");
+
+            if (itemArr.size() == 0) {
+                return new ArrayList<>();
+            }
 
             List<FileResource> fileResourceList = new LinkedList<>();
 

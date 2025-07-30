@@ -16,6 +16,7 @@
 
 - [x] 多种存储
     - [x] 本地存储
+    - [x] [中国移动网盘](https://yun.139.com/)
     - [ ] [阿里云盘](https://www.alipan.com/)
     - [ ] [天翼云盘](https://cloud.189.cn) (个人云, 家庭云)
     - [ ] [123云盘](https://www.123pan.com/)
