@@ -24,6 +24,8 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @AdapterComponent(title = "系统文件适配器")
 public class SystemFileAdapter implements IFileAdapter {
@@ -148,7 +150,6 @@ public class SystemFileAdapter implements IFileAdapter {
 
         File file = new File(path);
         resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentLength(Math.toIntExact(file.length()));
         resp.setContentType(Files.probeContentType(file.toPath()));
 
         String rangeHeader = req.getHeader("Range");
@@ -187,9 +188,41 @@ public class SystemFileAdapter implements IFileAdapter {
                 out.flush();
             }
         } else {
-            InputStream inputStream = new FileInputStream(file);
-            inputStream.transferTo(resp.getOutputStream());
-            inputStream.close();
+            if (file.isDirectory()) {
+                resp.setContentType("application/zip");
+                resp.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + ".zip\"");
+                try {
+                    ZipOutputStream zipOut = new ZipOutputStream(resp.getOutputStream());
+                    zipFolder(file, file.getName(), zipOut);
+                    zipOut.finish();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                resp.setContentLength(Math.toIntExact(file.length()));
+                InputStream inputStream = new FileInputStream(file);
+                inputStream.transferTo(resp.getOutputStream());
+                inputStream.close();
+            }
+        }
+    }
+
+    // 递归压缩目录
+    private void zipFolder(File folder, String basePath, ZipOutputStream zipOut) throws IOException {
+        File[] files = folder.listFiles();
+        if (files == null) return;
+
+        for (File file : files) {
+            String entryName = basePath + "/" + file.getName();
+            if (file.isDirectory()) {
+                zipFolder(file, entryName, zipOut);
+            } else {
+                zipOut.putNextEntry(new ZipEntry(entryName));
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    fis.transferTo(zipOut);
+                }
+                zipOut.closeEntry();
+            }
         }
     }
 

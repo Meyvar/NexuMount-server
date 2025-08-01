@@ -237,10 +237,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             throw new RuntimeException("status is " + response.getStatus());
         }
 
-        jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
-        if (!jsonObject.getBoolean("success")) {
-            throw new RuntimeException(jsonObject.getString("message"));
-        }
+        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
     }
 
     @Override
@@ -309,10 +306,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             throw new RuntimeException("status is " + response.getStatus());
         }
 
-        jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
-        if (!jsonObject.getBoolean("success")) {
-            throw new RuntimeException(jsonObject.getString("message"));
-        }
+        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
     }
 
     @Override
@@ -344,36 +338,65 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             throw new RuntimeException("status is " + response.getStatus());
         }
 
-        jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
-        if (!jsonObject.getBoolean("success")) {
-            throw new RuntimeException(jsonObject.getString("message"));
-        }
+        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
     }
 
     @Override
     public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) throws IOException {
-        String url = BASIC_URL + "/file/getDownloadUrl";
-
-        FileResource fileResource = getFolderItself(fileBucket, path);
 
         JSONObject jsonObject = new JSONObject();
 
-        jsonObject.put("fileId", fileResource.getId());
+        FileResource fileResource = getFolderItself(fileBucket, path);
 
-        HttpResponse response = HttpRequest.post(url)
-                .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
-                .body(jsonObject.toJSONString())
-                .execute();
+        if (fileResource.getType().equals("folder")) {
+            String url = BASIC_URL + "/file/archiveFiles";
+            jsonObject.put("fileIds", Collections.singletonList(fileResource.getId()));
+            jsonObject.put("name", fileResource.getName());
 
-        if (response.isOk()) {
-            jsonObject = JSONObject.parseObject(response.body());
-            if (jsonObject.getBoolean("success")) {
-                return jsonObject.getJSONObject("data").getString("url");
+            HttpResponse response = HttpRequest.post(url)
+                    .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
+                    .body(jsonObject.toJSONString())
+                    .execute();
+
+            if (response.isOk()) {
+                jsonObject = JSONObject.parseObject(response.body());
+                if (jsonObject.getBoolean("success")) {
+                    String downloadUrl = jsonObject.getJSONObject("data").getString("downloadUrl");
+                    if (StringUtils.hasText(downloadUrl)) {
+                        return downloadUrl;
+                    }
+
+                    jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"),  fileBucket.getFieldJson().getString("authorization"));
+
+                    String extraData = jsonObject.getString("extraData");
+                    jsonObject = JSONObject.parseObject(extraData);
+
+                    return jsonObject.getString("url");
+                } else {
+                    throw new RuntimeException(jsonObject.getString("message"));
+                }
             } else {
-                throw new RuntimeException(jsonObject.getString("message"));
+                throw new RuntimeException("status is " + response.getStatus());
             }
         } else {
-            throw new RuntimeException("status is " + response.getStatus());
+            String url = BASIC_URL + "/file/getDownloadUrl";
+            jsonObject.put("fileId", fileResource.getId());
+
+            HttpResponse response = HttpRequest.post(url)
+                    .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
+                    .body(jsonObject.toJSONString())
+                    .execute();
+
+            if (response.isOk()) {
+                jsonObject = JSONObject.parseObject(response.body());
+                if (jsonObject.getBoolean("success")) {
+                    return jsonObject.getJSONObject("data").getString("url");
+                } else {
+                    throw new RuntimeException(jsonObject.getString("message"));
+                }
+            } else {
+                throw new RuntimeException("status is " + response.getStatus());
+            }
         }
     }
 
@@ -550,19 +573,37 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     private JSONObject taskGet(String taskId, String authorization) {
-        String url = BASIC_URL + "/task/get";
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("taskId", taskId);
+        while (true) {
+            String url = BASIC_URL + "/task/get";
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("taskId", taskId);
 
-        HttpResponse response = HttpRequest.post(url)
-                .addHeaders(getHeader(authorization))
-                .body(jsonObject.toJSONString())
-                .execute();
+            HttpResponse response = HttpRequest.post(url)
+                    .addHeaders(getHeader(authorization))
+                    .body(jsonObject.toJSONString())
+                    .execute();
 
-        if (response.isOk()) {
-            return JSONObject.parseObject(response.body());
-        } else {
-            throw new RuntimeException("get task failed");
+            if (response.isOk()) {
+                jsonObject = JSONObject.parseObject(response.body());
+                if (jsonObject.getBoolean("success")) {
+
+                    if (jsonObject.getJSONObject("data").getJSONObject("taskInfo").getString("status").equals("Succeed")) {
+                        return jsonObject.getJSONObject("data");
+                    } else {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+
+                } else {
+                    throw new RuntimeException(jsonObject.getString("message"));
+                }
+            } else {
+                throw new RuntimeException("get task failed");
+            }
         }
     }
 }
