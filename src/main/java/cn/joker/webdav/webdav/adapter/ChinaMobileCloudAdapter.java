@@ -4,34 +4,23 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
 import cn.joker.webdav.webdav.entity.FileResource;
-import cn.joker.webdav.webdav.entity.GetFileResource;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.Synchronized;
-import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -192,9 +181,14 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             if (jsonObject.getBoolean("success")) {
                 jsonObject = jsonObject.getJSONObject("data");
                 if (!jsonObject.getBoolean("rapidUpload")) {
+
+                    String uploadId = jsonObject.getString("uploadId");
+                    String fileId = jsonObject.getString("fileId");
+                    String contentHashAlgorithm = "SHA256";
+                    String contentHash = streamResult.sha256;
+
                     jsonObject = jsonObject.getJSONArray("partInfos").getJSONObject(0);
                     url = jsonObject.getString("uploadUrl");
-
 
                     response = HttpRequest.put(url)
                             .header("Content-Type", "application/octet-stream")
@@ -202,6 +196,21 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                             .execute();
                     if (!response.isOk()) {
                         throw new RuntimeException("status is " + response.getStatus());
+                    } else {
+                        url = BASIC_URL + "/file/complete";
+                        jsonObject = new JSONObject();
+                        jsonObject.put("uploadId", uploadId);
+                        jsonObject.put("fileId", fileId);
+                        jsonObject.put("contentHashAlgorithm", contentHashAlgorithm);
+                        jsonObject.put("contentHash", contentHash);
+
+                        response = HttpRequest.post(url)
+                                .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
+                                .body(jsonObject.toJSONString())
+                                .execute();
+                        if (!response.isOk()) {
+                            throw new RuntimeException("status is " + response.getStatus());
+                        }
                     }
                 }
             } else {
@@ -366,7 +375,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                         return downloadUrl;
                     }
 
-                    jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"),  fileBucket.getFieldJson().getString("authorization"));
+                    jsonObject = taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
 
                     String extraData = jsonObject.getString("extraData");
                     jsonObject = JSONObject.parseObject(extraData);
