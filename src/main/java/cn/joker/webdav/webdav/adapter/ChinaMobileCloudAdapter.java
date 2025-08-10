@@ -1,7 +1,7 @@
 package cn.joker.webdav.webdav.adapter;
 
 import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.IoUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
@@ -131,9 +131,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path, InputStream input) throws Exception {
-        StreamResult streamResult = processStream(input);
-
+    public void put(FileBucket fileBucket, String path, Path tempFilePath) throws Exception {
         Path filePath = Paths.get(path);
 
         String id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
@@ -158,15 +156,60 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         cleanCache(fileBucket.getFieldJson().getString("authorization"), id);
 
-        Long size = streamResult.size;
+
+        File file = tempFilePath.toFile();
+        String sha256 = DigestUtil.sha256Hex(file);
+
+        Long size = file.length();
 
 
         JSONObject jsonObject = JSONObject.parseObject("{\"parentFileId\":\"1234\",\"name\":\"3.png\",\"type\":\"file\",\"size\":456136,\"fileRenameMode\":\"auto_rename\",\"contentHash\":\"1234\",\"contentHashAlgorithm\":\"SHA256\",\"contentType\":\"application/oct-stream\",\"parallelUpload\":false,\"partInfos\":[{\"parallelHashCtx\":{\"partOffset\":0},\"partNumber\":1,\"partSize\":456136}]}");
-        jsonObject.put("contentHash", streamResult.sha256);
+        jsonObject.put("contentHash", sha256);
         jsonObject.put("name", filePath.getFileName().toString());
         jsonObject.put("size", size);
-        jsonObject.getJSONArray("partInfos").getJSONObject(0).put("partSize", size);
         jsonObject.put("parentFileId", id);
+
+        double fragmentation = size / 20971520.0;
+
+        int uploadSize = (int) Math.ceil(fragmentation);
+
+        List<Map<String, Object>> jsonArray = new LinkedList<>();
+
+        long parallelHashCtx = 0;
+        for (int i = 0; i < uploadSize; i++) {
+            Map<String, Object> partInfo = new JSONObject();
+
+            partInfo.put("partNumber", i + 1);
+
+            long partSize = 20971520;
+
+            if ((parallelHashCtx + partSize) > size) {
+                partSize = size - parallelHashCtx;
+            }
+
+           JSONObject parallelHashCtxJson = new JSONObject();
+            parallelHashCtxJson.put("partOffset", parallelHashCtx);
+
+            partInfo.put("parallelHashCtx", parallelHashCtxJson);
+            partInfo.put("partSize", partSize);
+
+            jsonArray.add(partInfo);
+
+            parallelHashCtx += partSize;
+        }
+
+        List<List<Map<String, Object>>> result = new LinkedList<>();
+        int listSize = jsonArray.size();
+        for (int i = 0; i < listSize; i += 100) {
+            int end = Math.min(listSize, i + 100);
+            result.add(new LinkedList<>(jsonArray.subList(i, end)));
+        }
+
+        if (result.size() > 1) {
+            jsonObject.put("partInfos", result.getFirst());
+        } else {
+            jsonObject.put("partInfos", jsonArray);
+        }
 
 
         String url = BASIC_URL + "/file/create";
@@ -185,32 +228,101 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                     String uploadId = jsonObject.getString("uploadId");
                     String fileId = jsonObject.getString("fileId");
                     String contentHashAlgorithm = "SHA256";
-                    String contentHash = streamResult.sha256;
 
-                    jsonObject = jsonObject.getJSONArray("partInfos").getJSONObject(0);
-                    url = jsonObject.getString("uploadUrl");
+                    if (jsonObject.getBoolean("exist")){
+                        return;
+                    }
 
-                    response = HttpRequest.put(url)
-                            .header("Content-Type", "application/octet-stream")
-                            .body(IoUtil.readBytes(streamResult.stream))
-                            .execute();
-                    if (!response.isOk()) {
-                        throw new RuntimeException("status is " + response.getStatus());
-                    } else {
-                        url = BASIC_URL + "/file/complete";
-                        jsonObject = new JSONObject();
-                        jsonObject.put("uploadId", uploadId);
-                        jsonObject.put("fileId", fileId);
-                        jsonObject.put("contentHashAlgorithm", contentHashAlgorithm);
-                        jsonObject.put("contentHash", contentHash);
+                    JSONArray partInfos = JSONArray.parseArray(jsonObject.getJSONArray("partInfos").toJSONString());
 
-                        response = HttpRequest.post(url)
-                                .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
-                                .body(jsonObject.toJSONString())
+
+                    if (result.size() > 1) {
+                        url = BASIC_URL + "/file/getUploadUrl";
+
+                        for (int i = 0; i < result.size(); i++) {
+                            if (i == 0) {
+                                continue;
+                            }
+
+
+                            jsonObject = new JSONObject();
+                            jsonObject.put("uploadId", uploadId);
+                            jsonObject.put("fileId", fileId);
+                            JSONObject commonAccountInfo = new JSONObject();
+
+                            String authorization = fileBucket.getFieldJson().getString("authorization").replace("Basic ", "");
+                            byte[] decodedBytes = Base64.getDecoder().decode(authorization);
+                            authorization = new String(decodedBytes);
+                            String[] authorizations = authorization.split("\\|");
+                            authorizations = authorizations[0].split(":");
+                            authorization = authorizations[1];
+
+                            commonAccountInfo.put("accountType", 1);
+                            commonAccountInfo.put("account", authorization);
+
+                            jsonObject.put("commonAccountInfo", commonAccountInfo);
+                            jsonObject.put("partInfos", result.get(i));
+
+
+                            response = HttpRequest.post(url)
+                                    .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
+                                    .body(jsonObject.toJSONString())
+                                    .execute();
+
+                            if (response.isOk()) {
+                                jsonObject = JSONObject.parseObject(response.body());
+                                partInfos.addAll(JSONArray.parseArray(jsonObject.getJSONObject("data").getJSONArray("partInfos").toJSONString()));
+                            } else {
+                                throw new RuntimeException("status is " + response.getStatus());
+                            }
+
+                        }
+                    }
+
+
+                    InputStream fis = new FileInputStream(file);
+                    byte[] buffer = new byte[20971520];
+
+                    for (int i = 0; i < partInfos.size(); i++) {
+                        jsonObject = partInfos.getJSONObject(i);
+
+                        url = jsonObject.getString("uploadUrl");
+
+                        int bytesRead = fis.read(buffer);
+                        InputStream partStream = new ByteArrayInputStream(buffer, 0, bytesRead);
+
+
+                        response = HttpRequest.put(url)
+                                .header("Content-Type", "application/octet-stream")
+                                .body(partStream.readAllBytes())
                                 .execute();
+
+
                         if (!response.isOk()) {
                             throw new RuntimeException("status is " + response.getStatus());
                         }
+                    }
+
+                    fis.close();
+
+                    url = BASIC_URL + "/file/complete";
+                    jsonObject = new JSONObject();
+                    jsonObject.put("uploadId", uploadId);
+                    jsonObject.put("fileId", fileId);
+                    jsonObject.put("contentHashAlgorithm", contentHashAlgorithm);
+                    jsonObject.put("contentHash", sha256);
+
+                    response = HttpRequest.post(url)
+                            .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
+                            .body(jsonObject.toJSONString())
+                            .execute();
+                    if (response.isOk()) {
+                        jsonObject = JSONObject.parseObject(response.body());
+                        if (!jsonObject.getBoolean("success")) {
+                            throw new RuntimeException(jsonObject.getString("message"));
+                        }
+                    } else {
+                        throw new RuntimeException("status is " + response.getStatus());
                     }
                 }
             } else {
@@ -545,41 +657,6 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         return map;
     }
 
-
-    static class StreamResult {
-        public String sha256;
-        public long size;
-        public InputStream stream;
-
-        public StreamResult(String sha256, long size, InputStream stream) {
-            this.sha256 = sha256;
-            this.size = size;
-            this.stream = stream;
-        }
-    }
-
-    private StreamResult processStream(InputStream inputStream) throws Exception {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-        byte[] temp = new byte[8192];
-        int read;
-        long size = 0;
-
-        while ((read = inputStream.read(temp)) != -1) {
-            digest.update(temp, 0, read);
-            buffer.write(temp, 0, read);
-            size += read;
-        }
-
-        byte[] hashBytes = digest.digest();
-        StringBuilder hex = new StringBuilder();
-        for (byte b : hashBytes) {
-            hex.append(String.format("%02x", b));
-        }
-
-        return new StreamResult(hex.toString(), size, new ByteArrayInputStream(buffer.toByteArray()));
-    }
 
     private JSONObject taskGet(String taskId, String authorization) {
         while (true) {

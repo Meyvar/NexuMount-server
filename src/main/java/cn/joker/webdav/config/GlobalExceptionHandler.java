@@ -25,11 +25,11 @@ public class GlobalExceptionHandler {
             msg = "服务方法出错！";
         }
         Response<String> response = Response.error(msg);
-        if (e instanceof NotLoginException){
+        if (e instanceof NotLoginException) {
             response.setCode(Response.NO_LOGIN);
-        }else if (e instanceof NotPermissionException){
+        } else if (e instanceof NotPermissionException) {
             response.setCode(Response.NO_PERMISSIONS);
-        }else{
+        } else {
             response.setCode(Response.CODE_ERROR);
         }
         return response;

@@ -17,10 +17,8 @@ import org.springframework.cache.CacheManager;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.*;
@@ -227,13 +225,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path, InputStream input) throws IOException {
-        HttpServletRequest req = RequestHolder.getRequest();
-
-        String mTime = req.getHeader("X-Oc-Mtime");
-        if (!StringUtils.hasText(mTime)) {
-            mTime = req.getHeader("Last-Modified");
-        }
+    public void put(FileBucket fileBucket, String path, Path tempFilePath) throws IOException {
 
         // 确保父目录存在
         Path targetPath = Paths.get(path);
@@ -242,31 +234,30 @@ public class SystemFileAdapter implements IFileAdapter {
             cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
         }
 
-        try (OutputStream output = Files.newOutputStream(targetPath)) {
-
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-
-            while ((bytesRead = input.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
-            }
-
-            output.flush();
-
-            if (StringUtils.hasText(mTime)) {
-                long timestamp = Long.parseLong(mTime);
-                FileTime fileTime = FileTime.from(Instant.ofEpochSecond(timestamp));
-                Files.setLastModifiedTime(targetPath, fileTime);
-            }
-        } catch (ClientAbortException e) {
-            Files.deleteIfExists(targetPath);
-
-        }
+        Files.copy(tempFilePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
     }
 
     @Override
     public void delete(FileBucket fileBucket, String path) throws IOException {
-        Files.delete(Paths.get(path));
+
+        if (Files.isDirectory(Paths.get(path))) {
+            Files.walkFileTree(Paths.get(path), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc != null) throw exc;
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else {
+            Files.delete(Paths.get(path));
+        }
         cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
     }
 

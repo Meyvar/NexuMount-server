@@ -19,6 +19,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 
 @Component
@@ -77,7 +78,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path, InputStream input) {
+    public void put(FileBucket fileBucket, String path,  Path tempFilePath) {
 
     }
 

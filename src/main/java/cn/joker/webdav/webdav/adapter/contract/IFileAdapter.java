@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 public interface IFileAdapter {
 
@@ -33,7 +34,7 @@ public interface IFileAdapter {
      * 文件列表
      *
      * @param fileBucket 文件桶
-     * @param uri  请求地址
+     * @param uri        请求地址
      * @return 文件list
      */
     List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException;
@@ -42,7 +43,7 @@ public interface IFileAdapter {
      * 获取资源
      *
      * @param fileBucket 文件桶
-     * @param path 资源路径
+     * @param path       资源路径
      */
     void get(FileBucket fileBucket, String path) throws Exception;
 
@@ -50,15 +51,15 @@ public interface IFileAdapter {
      * 上传资源
      *
      * @param fileBucket 文件桶
-     * @param path 上传路径
+     * @param path       上传路径
      */
-    void put(FileBucket fileBucket, String path, InputStream input) throws Exception;
+    void put(FileBucket fileBucket, String path, Path tempFilePath) throws Exception;
 
     /**
      * 删除资源
      *
      * @param fileBucket 文件桶
-     * @param path 删除路径
+     * @param path       删除路径
      */
     void delete(FileBucket fileBucket, String path) throws IOException;
 
@@ -66,7 +67,7 @@ public interface IFileAdapter {
      * 创建文件夹
      *
      * @param fileBucket 文件桶
-     * @param path 创建路径
+     * @param path       创建路径
      */
     void mkcol(FileBucket fileBucket, String path) throws IOException;
 
@@ -76,10 +77,11 @@ public interface IFileAdapter {
      * @param fileBucket 文件桶
      * @param sourcePath 源路径
      */
-    void move(FileBucket fileBucket, String sourcePath, String destPath)  throws IOException;
+    void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException;
 
     /**
      * 文件复制
+     *
      * @param fileBucket 文件桶
      * @param sourcePath
      * @param destPath
@@ -90,6 +92,7 @@ public interface IFileAdapter {
 
     /**
      * 获取下载地址
+     *
      * @param path
      * @param fileType
      * @return
@@ -99,6 +102,7 @@ public interface IFileAdapter {
 
     /**
      * 存储桶工作状态
+     *
      * @param fileBucket
      * @return
      */

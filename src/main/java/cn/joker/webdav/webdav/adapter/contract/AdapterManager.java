@@ -1,5 +1,6 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
+import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
@@ -10,26 +11,24 @@ import cn.joker.webdav.webdav.entity.RequestStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Data;
 import lombok.Getter;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.util.StringUtils;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
+import java.time.Instant;
+import java.util.*;
 
 public class AdapterManager {
 
@@ -269,7 +268,52 @@ public class AdapterManager {
     }
 
     public void put(InputStream inputStream) throws Exception {
-        adapter.put(fileBucket, fileBucket.getSourcePath() + uri, inputStream);
+        HttpServletRequest req = RequestHolder.getRequest();
+        String mTime = req.getHeader("X-Oc-Mtime");
+        if (!StringUtils.hasText(mTime)) {
+            mTime = req.getHeader("Last-Modified");
+        }
+
+        String jarPath = Paths.get(
+                WebDavServerApplication.class.getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .toURI()
+        ).toFile().getParent();
+
+        // 确保父目录存在
+        Path targetPath = Paths.get(jarPath + "/temp/");
+        if (!Files.exists(targetPath)) {
+            Files.createDirectories(targetPath);
+        }
+
+        String filePath = targetPath + "/" + UUID.randomUUID() + new Date().getTime() + Paths.get(uri).getFileName();
+
+        OutputStream out = Files.newOutputStream(Paths.get(filePath));
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = inputStream.read(buffer)) != -1) {
+            out.write(buffer, 0, len);
+        }
+
+        out.flush();
+        inputStream.close();
+
+        if (StringUtils.hasText(mTime)) {
+            long timestamp = Long.parseLong(mTime);
+            FileTime fileTime = FileTime.from(Instant.ofEpochSecond(timestamp));
+            Files.setLastModifiedTime(targetPath, fileTime);
+        }
+
+        try {
+            adapter.put(fileBucket, fileBucket.getSourcePath() + uri, Paths.get(filePath));
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            Paths.get(filePath).toFile().delete();
+        }
+
+
     }
 
     public RequestStatus move() throws IOException {
