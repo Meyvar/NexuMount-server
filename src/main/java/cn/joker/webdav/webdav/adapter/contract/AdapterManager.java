@@ -36,8 +36,10 @@ public class AdapterManager {
 
     private CacheManager cacheManager;
 
+    @Getter
     private IFileAdapter adapter;
 
+    @Getter
     private FileBucket fileBucket;
 
     private List<FileBucket> fileBucketList = new ArrayList<>();
@@ -316,28 +318,13 @@ public class AdapterManager {
 
     }
 
-    public RequestStatus move() throws IOException {
+    public RequestStatus move(AdapterManager toAdapterManager) throws IOException {
         RequestStatus status = new RequestStatus();
 
         HttpServletRequest request = RequestHolder.getRequest();
-        HttpServletResponse response = RequestHolder.getResponse();
 
-        String destHeader = request.getHeader("Destination");
-
-        if (destHeader == null) {
-            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
-            return status;
-        }
-
-        URI destUriObj = URI.create(destHeader);
+        URI destUriObj = URI.create(toAdapterManager.uri);
         String destPathRaw = destUriObj.getPath();
-
-        if (!destPathRaw.startsWith(fileBucket.getPath())) {
-            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
-            return status;
-        }
-
-        destPathRaw = this.userPath + destPathRaw.replaceFirst(this.userPath, "");
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
 
@@ -351,35 +338,19 @@ public class AdapterManager {
         }
 
 
-        adapter.move(fileBucket, fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        adapter.move(fileBucket, fileBucket.getSourcePath() + uri, toAdapterManager.fileBucket, toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
     }
 
-    public RequestStatus copy() throws IOException {
+    public RequestStatus copy(AdapterManager toAdapterManager) throws IOException {
         RequestStatus status = new RequestStatus();
 
-
         HttpServletRequest request = RequestHolder.getRequest();
-        HttpServletResponse response = RequestHolder.getResponse();
 
-        String destHeader = request.getHeader("Destination");
-
-        if (destHeader == null) {
-            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
-            return status;
-        }
-
-        URI destUriObj = URI.create(destHeader);
+        URI destUriObj = URI.create(toAdapterManager.uri);
         String destPathRaw = destUriObj.getPath();
-
-        if (!destPathRaw.startsWith(fileBucket.getPath())) {
-            status.setCode(HttpServletResponse.SC_BAD_REQUEST);
-            return status;
-        }
-
-        destPathRaw = this.userPath + destPathRaw.replaceFirst(this.userPath, "");
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
         if (adapter.hasPath(fileBucket, destPathRaw) && !overwrite) {
@@ -388,19 +359,19 @@ public class AdapterManager {
             return status;
         }
 
-        adapter.copy(fileBucket, fileBucket.getSourcePath() + uri, fileBucket.getSourcePath() + destPathRaw);
+        adapter.copy(fileBucket, fileBucket.getSourcePath() + uri, toAdapterManager.fileBucket, toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
     }
 
-    public String getDownloadUrl(String fileType) throws IOException {
+    public String getDownloadUrl() throws IOException {
         String path = fileBucket.getPath();
         if (path.equals("/")) {
             path = "";
         }
         path += uri;
         path = path.replaceFirst(this.userPath, "");
-        return adapter.getDownloadUrl(fileBucket, path, fileType);
+        return adapter.getDownloadUrl(fileBucket, path);
     }
 }

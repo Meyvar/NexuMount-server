@@ -1,10 +1,13 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
@@ -32,6 +35,9 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Autowired
     private CacheManager cacheManager;
+
+    @Autowired
+    private TaskManager taskManager;
 
     @Getter
     @Setter
@@ -125,8 +131,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Override
     public void get(FileBucket fileBucket, String path) throws Exception {
-        FileResource fileResource = getFolderItself(fileBucket, path);
-        String downloadUrl = getDownloadUrl(fileBucket, path, fileResource.getContentType());
+        String downloadUrl = getDownloadUrl(fileBucket, path);
         RequestHolder.getResponse().sendRedirect(downloadUrl);
     }
 
@@ -187,7 +192,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 partSize = size - parallelHashCtx;
             }
 
-           JSONObject parallelHashCtxJson = new JSONObject();
+            JSONObject parallelHashCtxJson = new JSONObject();
             parallelHashCtxJson.put("partOffset", parallelHashCtx);
 
             partInfo.put("parallelHashCtx", parallelHashCtxJson);
@@ -229,7 +234,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                     String fileId = jsonObject.getString("fileId");
                     String contentHashAlgorithm = "SHA256";
 
-                    if (jsonObject.getBoolean("exist")){
+                    if (jsonObject.getBoolean("exist")) {
                         return;
                     }
 
@@ -399,71 +404,89 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     @Override
-    public void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
-        Path oldPath = Paths.get(sourcePath);
-        Path newPath = Paths.get(destPath);
+    public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            Path oldPath = Paths.get(fromPath);
+            Path newPath = Paths.get(toPath);
 
 
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fileBucket.getFieldJson().getString("authorization"))));
-        jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization")));
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket.getFieldJson().getString("authorization"))));
+            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
 
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), jsonObject.getString("toParentFileId"));
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), queryId(oldPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization")));
+            String url = BASIC_URL + "/file/batchMove";
 
-        String url = BASIC_URL + "/file/batchMove";
+            HttpResponse response = HttpRequest.post(url)
+                    .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
+                    .body(jsonObject.toJSONString())
+                    .execute();
 
-        HttpResponse response = HttpRequest.post(url)
-                .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
-                .body(jsonObject.toJSONString())
-                .execute();
-
-        if (response.isOk()) {
-            jsonObject = JSONObject.parseObject(response.body());
-            if (!jsonObject.getBoolean("success")) {
-                throw new RuntimeException(jsonObject.getString("message"));
+            if (response.isOk()) {
+                jsonObject = JSONObject.parseObject(response.body());
+                if (!jsonObject.getBoolean("success")) {
+                    throw new RuntimeException(jsonObject.getString("message"));
+                }
+            } else {
+                throw new RuntimeException("status is " + response.getStatus());
             }
+
+            taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
+
+            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(fromPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
+            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(toPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
+
         } else {
-            throw new RuntimeException("status is " + response.getStatus());
+
         }
 
-        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
+
     }
 
     @Override
-    public void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
-        Path oldPath = Paths.get(sourcePath);
-        Path newPath = Paths.get(destPath);
+    public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            //同一个存储桶操作
+
+            Path oldPath = Paths.get(fromPath);
+            Path newPath = Paths.get(toPath);
 
 
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fileBucket.getFieldJson().getString("authorization"))));
-        jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization")));
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket.getFieldJson().getString("authorization"))));
+            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
 
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), jsonObject.getString("toParentFileId"));
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), queryId(oldPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization")));
+            String url = BASIC_URL + "/file/batchCopy";
 
-        String url = BASIC_URL + "/file/batchCopy";
+            HttpResponse response = HttpRequest.post(url)
+                    .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
+                    .body(jsonObject.toJSONString())
+                    .execute();
 
-        HttpResponse response = HttpRequest.post(url)
-                .addHeaders(getHeader(fileBucket.getFieldJson().getString("authorization")))
-                .body(jsonObject.toJSONString())
-                .execute();
-
-        if (response.isOk()) {
-            jsonObject = JSONObject.parseObject(response.body());
-            if (!jsonObject.getBoolean("success")) {
-                throw new RuntimeException(jsonObject.getString("message"));
+            if (response.isOk()) {
+                jsonObject = JSONObject.parseObject(response.body());
+                if (!jsonObject.getBoolean("success")) {
+                    throw new RuntimeException(jsonObject.getString("message"));
+                }
+            } else {
+                throw new RuntimeException("status is " + response.getStatus());
             }
+
+            taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
+
+            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(toPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
+
         } else {
-            throw new RuntimeException("status is " + response.getStatus());
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath);
+
+            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
         }
 
-        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fileBucket.getFieldJson().getString("authorization"));
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) throws IOException {
+    public String getDownloadUrl(FileBucket fileBucket, String path) throws IOException {
 
         JSONObject jsonObject = new JSONObject();
 
@@ -542,6 +565,10 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     private String queryId(String uri, String authorization) {
+        if (uri.equals("/")) {
+            return "/";
+        }
+
         String[] paths = uri.split("/");
 
         String search = paths[paths.length - 1];

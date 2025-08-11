@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -58,7 +59,7 @@ public class ApiServiceImpl implements IApiService {
                 throw new RuntimeException(status.getMessage());
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
 
         List<FileResource> list = status.getFileResources();
@@ -80,7 +81,7 @@ public class ApiServiceImpl implements IApiService {
                 throw new RuntimeException(status.getMessage());
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -92,7 +93,7 @@ public class ApiServiceImpl implements IApiService {
             resource = adapterManager.getFolderItself();
 //            resource.setHref(adapterManager.getDownloadUrl(resource.getContentType()));
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
         return resource;
     }
@@ -125,7 +126,7 @@ public class ApiServiceImpl implements IApiService {
         try {
             adapterManager.put(file.getInputStream());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -135,7 +136,7 @@ public class ApiServiceImpl implements IApiService {
         try {
             adapterManager.mkcol();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -145,27 +146,58 @@ public class ApiServiceImpl implements IApiService {
         try {
             adapterManager.put(RequestHolder.getRequest().getInputStream());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
     @Override
     public void move(RequestParam param) {
         AdapterManager adapterManager = getAdapterManager(param);
+
+        HttpServletRequest request = RequestHolder.getRequest();
+        String destHeader = request.getHeader("Destination");
+        if (destHeader == null) {
+            throw new RuntimeException("目标地址不能为空！");
+        }
+        URI destUriObj = URI.create(destHeader);
+        String destPathRaw = destUriObj.getPath();
+
+        RequestParam toParam = new RequestParam();;
+        toParam.setPath(destPathRaw);
+
+        AdapterManager toAdapterManager = getAdapterManager(toParam);
+
         try {
-            adapterManager.move();
+            adapterManager.move(toAdapterManager);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
     @Override
     public void copy(RequestParam param) {
         AdapterManager adapterManager = getAdapterManager(param);
+
+
+        HttpServletRequest request = RequestHolder.getRequest();
+        String destHeader = request.getHeader("Destination");
+
+        if (destHeader == null) {
+           throw new RuntimeException("目标地址不能为空！");
+        }
+
+        URI destUriObj = URI.create(destHeader);
+        String destPathRaw = destUriObj.getPath();
+
+        RequestParam toParam = new RequestParam();;
+        toParam.setPath(destPathRaw);
+
+        AdapterManager toAdapterManager = getAdapterManager(toParam);
+
         try {
-            adapterManager.copy();
+            adapterManager.copy(toAdapterManager);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 }

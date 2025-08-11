@@ -2,6 +2,8 @@ package cn.joker.webdav.webdav.adapter;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
@@ -30,6 +32,9 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Autowired
     private CacheManager cacheManager;
+
+    @Autowired
+    private TaskManager taskManager;
 
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
@@ -268,35 +273,52 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
-        Files.createDirectories(Paths.get(destPath).getParent());
-        Files.move(Paths.get(sourcePath), Paths.get(destPath));
-        cleanCache(fileBucket.getPath(), Paths.get(destPath).getParent().toString());
-    }
+    public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            Files.createDirectories(Paths.get(toPath).getParent());
+            Files.move(Paths.get(fromPath), Paths.get(toPath));
 
-    @Override
-    public void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
-        File sourceFile = Paths.get(sourcePath).toFile();
-        File destFile = Paths.get(destPath).toFile();
-        cleanCache(fileBucket.getPath(), Paths.get(destPath).getParent().toString());
-        if (sourceFile.isDirectory()) {
-            Files.walk(sourceFile.toPath()).forEach(source -> {
-                try {
-                    Path target = destFile.toPath().resolve(sourceFile.toPath().relativize(source));
-                    Files.createDirectories(target.getParent());
-                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            cleanCache(fromFileBucket.getPath(), Paths.get(fromPath).getParent().toString());
+            cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
         } else {
-            Files.createDirectories(destFile.getParentFile().toPath());
-            Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
         }
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) {
+    public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            //同一个存储桶操作
+            File sourceFile = Paths.get(fromPath).toFile();
+            File destFile = Paths.get(toPath).toFile();
+            if (sourceFile.isDirectory()) {
+                Files.walk(sourceFile.toPath()).forEach(source -> {
+                    try {
+                        Path target = destFile.toPath().resolve(sourceFile.toPath().relativize(source));
+                        Files.createDirectories(target.getParent());
+                        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            } else {
+                Files.createDirectories(destFile.getParentFile().toPath());
+                Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
+        } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath);
+
+            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+
+        }
+    }
+
+    @Override
+    public String getDownloadUrl(FileBucket fileBucket, String path) {
         return "/api/pub/dav/load.do?path=" + path + "&token=" + StpUtil.getTokenValue();
     }
 

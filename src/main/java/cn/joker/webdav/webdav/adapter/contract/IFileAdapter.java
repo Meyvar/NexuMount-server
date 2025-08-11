@@ -74,30 +74,28 @@ public interface IFileAdapter {
     /**
      * 移动资源
      *
-     * @param fileBucket 文件桶
-     * @param sourcePath 源路径
+     * @param fromFileBucket 文件桶
+     * @param fromPath 源路径
      */
-    void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException;
+    void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException;
 
     /**
      * 文件复制
      *
-     * @param fileBucket 文件桶
-     * @param sourcePath
-     * @param destPath
+     * @param fromFileBucket 文件桶
+     * @param fromPath
      * @throws IOException
      */
-    void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException;
+    void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException;
 
 
     /**
      * 获取下载地址
      *
      * @param path
-     * @param fileType
      * @return
      */
-    String getDownloadUrl(FileBucket fileBucket, String path, String fileType) throws IOException;
+    String getDownloadUrl(FileBucket fileBucket, String path) throws IOException;
 
 
     /**

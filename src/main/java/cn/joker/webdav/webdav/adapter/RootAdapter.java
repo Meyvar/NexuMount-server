@@ -93,17 +93,17 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void move(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
+    public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
 
     }
 
     @Override
-    public void copy(FileBucket fileBucket, String sourcePath, String destPath) throws IOException {
+    public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
 
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path, String fileType) {
+    public String getDownloadUrl(FileBucket fileBucket, String path) {
         return "";
     }
 

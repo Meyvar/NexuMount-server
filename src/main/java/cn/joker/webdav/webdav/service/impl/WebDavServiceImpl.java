@@ -6,6 +6,7 @@ import cn.joker.webdav.business.service.ISysUserService;
 import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
+import cn.joker.webdav.webdav.entity.RequestParam;
 import cn.joker.webdav.webdav.entity.RequestStatus;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import cn.joker.webdav.utils.RequestHolder;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -284,7 +286,20 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handleMove(HttpServletRequest req, HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
         AdapterManager adapterManager = new AdapterManager(uri, userPath);
-        RequestStatus status = adapterManager.move();
+
+        HttpServletRequest request = RequestHolder.getRequest();
+        String destHeader = request.getHeader("Destination");
+
+        if (destHeader == null) {
+            throw new RuntimeException("目标地址不能为空！");
+        }
+
+        URI destUriObj = URI.create(destHeader);
+        String destPathRaw = destUriObj.getPath();
+
+        AdapterManager toAdapterManager = new AdapterManager(destPathRaw, userPath);
+
+        RequestStatus status = adapterManager.move(toAdapterManager);
 
         if (status.isSuccess()) {
             resp.setStatus(HttpServletResponse.SC_CREATED);
@@ -295,7 +310,18 @@ public class WebDavServiceImpl implements IWebDavService {
 
     private void handleCopy(HttpServletResponse resp, Path sourcePath, String uri) throws IOException {
         AdapterManager adapterManager = new AdapterManager(uri, userPath);
-        RequestStatus status = adapterManager.copy();
+        HttpServletRequest request = RequestHolder.getRequest();
+        String destHeader = request.getHeader("Destination");
+
+        if (destHeader == null) {
+            throw new RuntimeException("目标地址不能为空！");
+        }
+
+        URI destUriObj = URI.create(destHeader);
+        String destPathRaw = destUriObj.getPath();
+
+        AdapterManager toAdapterManager = new AdapterManager(destPathRaw, userPath);
+        RequestStatus status = adapterManager.copy(toAdapterManager);
         if (status.isSuccess()) {
             resp.setStatus(HttpServletResponse.SC_CREATED);
         } else {
