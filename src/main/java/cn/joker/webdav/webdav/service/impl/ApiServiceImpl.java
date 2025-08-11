@@ -91,7 +91,6 @@ public class ApiServiceImpl implements IApiService {
         try {
             AdapterManager adapterManager = getAdapterManager(param);
             resource = adapterManager.getFolderItself();
-//            resource.setHref(adapterManager.getDownloadUrl(resource.getContentType()));
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }

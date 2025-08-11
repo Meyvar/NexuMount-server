@@ -27,4 +27,6 @@ public class SysSetting {
 
     String taskCopyNumber;
 
+    String taskBufferSize;
+
 }

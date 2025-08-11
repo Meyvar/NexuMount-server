@@ -6,8 +6,10 @@ import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
@@ -27,7 +29,6 @@ import java.io.*;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.*;
 
 @AdapterComponent(title = "中国移动云盘")
@@ -38,6 +39,9 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Autowired
     private TaskManager taskManager;
+
+    @Autowired
+    private ISysSettingService sysSettingService;
 
     @Getter
     @Setter
@@ -67,14 +71,14 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             path = fileBucket.getSourcePath() + path;
         }
 
-        Path pathObj = Paths.get(path).normalize();
-        Path parent = pathObj.getParent();
+        Path pathObj = Paths.get(path);
+        String parent = PathUtils.toLinuxPath(pathObj.getParent());
 
         String id = "";
-        if (parent.toString().equals("/")) {
+        if (parent.equals("/")) {
             id = "/";
         } else {
-            id = queryId(parent.toString(), fileBucket.getFieldJson().getString("authorization"));
+            id = queryId(parent, fileBucket.getFieldJson().getString("authorization"));
         }
 
         List<FileResource> list = list(id, fileBucket.getFieldJson().getString("authorization"));
@@ -141,9 +145,9 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         String id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
 
-        if (!StringUtils.hasText(id) && !hasPath(fileBucket, filePath.getParent().toString())) {
+        if (!StringUtils.hasText(id) && !hasPath(fileBucket, PathUtils.toLinuxPath(filePath.getParent()))) {
             synchronized (this) {
-                String[] parts = filePath.getParent().toString().split("/");
+                String[] parts =PathUtils.toLinuxPath(filePath.getParent()).split("/");
                 StringBuilder current = new StringBuilder();
 
                 for (String part : parts) {
@@ -234,7 +238,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                     String fileId = jsonObject.getString("fileId");
                     String contentHashAlgorithm = "SHA256";
 
-                    if (jsonObject.getBoolean("exist")) {
+                    if (jsonObject.get("exist") != null && jsonObject.getBoolean("exist")) {
                         return;
                     }
 
@@ -478,7 +482,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         } else {
             //夸桶操作
             String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath);
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
 
             taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
         }
@@ -565,6 +569,8 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     private String queryId(String uri, String authorization) {
+        uri = PathUtils.toLinuxPath(Paths.get(uri));
+
         if (uri.equals("/")) {
             return "/";
         }

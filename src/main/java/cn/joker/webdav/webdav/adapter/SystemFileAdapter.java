@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.utils.RequestHolder;
@@ -35,6 +36,9 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Autowired
     private TaskManager taskManager;
+
+    @Autowired
+    private ISysSettingService sysSettingService;
 
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
@@ -310,7 +314,7 @@ public class SystemFileAdapter implements IFileAdapter {
         } else {
             //夸桶操作
             String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath);
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
 
             taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
 

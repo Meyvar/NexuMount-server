@@ -18,15 +18,17 @@ public abstract class FileTransferTask implements Runnable {
     protected String fromPath;
     protected String toPath;
     protected Path targetPath;
+    protected String taskBufferSize;
 
     protected volatile boolean cancelled = false;
 
-    public FileTransferTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath) {
+    public FileTransferTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath, String taskBufferSize) {
         this.taskId = taskId;
         this.fromBucket = fromBucket;
         this.toBucket = toBucket;
         this.fromPath = fromPath;
         this.toPath = toPath;
+        this.taskBufferSize = taskBufferSize;
     }
 
     public abstract void taskContent(TaskManager tm, TaskMeta meta) throws Exception;

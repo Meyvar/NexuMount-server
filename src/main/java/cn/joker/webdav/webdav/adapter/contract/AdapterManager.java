@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
@@ -236,7 +237,7 @@ public class AdapterManager {
     }
 
     public void get() throws Exception {
-        adapter.get(fileBucket, fileBucket.getSourcePath() + uri);
+        adapter.get(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
     }
 
     public boolean hasPath() {
@@ -253,7 +254,7 @@ public class AdapterManager {
     }
 
     public void mkcol() throws IOException {
-        adapter.mkcol(fileBucket, fileBucket.getSourcePath() + uri);
+        adapter.mkcol(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
     }
 
     public RequestStatus delete() throws IOException {
@@ -265,7 +266,7 @@ public class AdapterManager {
         } else {
             status.setSuccess(true);
         }
-        adapter.delete(fileBucket, fileBucket.getSourcePath() + uri);
+        adapter.delete(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
         return status;
     }
 
@@ -308,7 +309,7 @@ public class AdapterManager {
         }
 
         try {
-            adapter.put(fileBucket, fileBucket.getSourcePath() + uri, Paths.get(filePath));
+            adapter.put(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), Paths.get(filePath));
         } catch (Exception e) {
             throw e;
         } finally {
@@ -328,9 +329,9 @@ public class AdapterManager {
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
 
-        if (adapter.hasPath(fileBucket, destPathRaw.toString())) {
+        if (adapter.hasPath(fileBucket, destPathRaw)) {
             if (overwrite) {
-                adapter.delete(fileBucket, destPathRaw.toString());
+                adapter.delete(fileBucket, destPathRaw);
             } else {
                 status.setCode(HttpServletResponse.SC_PRECONDITION_FAILED);
                 return status;
@@ -338,7 +339,7 @@ public class AdapterManager {
         }
 
 
-        adapter.move(fileBucket, fileBucket.getSourcePath() + uri, toAdapterManager.fileBucket, toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
+        adapter.move(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
@@ -359,18 +360,14 @@ public class AdapterManager {
             return status;
         }
 
-        adapter.copy(fileBucket, fileBucket.getSourcePath() + uri, toAdapterManager.fileBucket, toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
+        adapter.copy(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
     }
 
     public String getDownloadUrl() throws IOException {
-        String path = fileBucket.getPath();
-        if (path.equals("/")) {
-            path = "";
-        }
-        path += uri;
+        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
         path = path.replaceFirst(this.userPath, "");
         return adapter.getDownloadUrl(fileBucket, path);
     }

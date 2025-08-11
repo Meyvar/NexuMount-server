@@ -11,7 +11,12 @@ import cn.joker.webdav.fileTask.TaskStatus;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.SystemFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -21,8 +26,8 @@ import java.nio.file.StandardCopyOption;
 
 public class CopyTask extends FileTransferTask {
 
-    public CopyTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath) {
-        super(taskId, fromBucket, toBucket, fromPath, toPath);
+    public CopyTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath, String taskBufferSize) {
+        super(taskId, fromBucket, toBucket, fromPath, toPath, taskBufferSize);
     }
 
     @Override
@@ -39,15 +44,26 @@ public class CopyTask extends FileTransferTask {
         } else {
             String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, Paths.get(fromPath).toString());
 
-            HttpResponse response = HttpUtil.createGet(downloadUrl).execute();
+            Request request = new Request.Builder()
+                    .url(downloadUrl)
+                    .build();
+
+            OkHttpClient client = new OkHttpClient();
+            Response response = client.newCall(request).execute();
+
+            if (!response.isSuccessful()){
+                throw  new IOException("Unexpected code " + response);
+            }
+
+            ResponseBody body = response.body();
 
             // 获取文件总大小
-            long totalSize = response.contentLength();
+            long totalSize = body.contentLength();
 
-            InputStream in = response.bodyStream();
+            InputStream in = body.byteStream();
             OutputStream out = FileUtil.getOutputStream(targetPath);
 
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[1024 * 1024 * Integer.parseInt(taskBufferSize)];
             int bytesRead;
             long downloaded = 0;
 
