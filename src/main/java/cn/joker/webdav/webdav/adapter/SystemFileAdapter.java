@@ -2,9 +2,11 @@ package cn.joker.webdav.webdav.adapter;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.entity.SysSetting;
 import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
@@ -313,11 +315,14 @@ public class SystemFileAdapter implements IFileAdapter {
             cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
         } else {
             //夸桶操作
+
+            SysSetting sysSetting = sysSettingService.get();
+            String token = StpUtil.getTokenValue();
+
             String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSetting.getTaskBufferSize());
 
-            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
-
+            taskManager.startTask(uuid, copyTask, token);
         }
     }
 

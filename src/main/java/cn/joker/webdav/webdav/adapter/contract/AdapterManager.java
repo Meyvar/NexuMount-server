@@ -33,6 +33,7 @@ import java.util.*;
 
 public class AdapterManager {
 
+    @Getter
     private String uri;
 
     private CacheManager cacheManager;
@@ -329,9 +330,9 @@ public class AdapterManager {
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
 
-        if (adapter.hasPath(fileBucket, destPathRaw)) {
+        if (toAdapterManager.adapter.hasPath(toAdapterManager.fileBucket, destPathRaw)) {
             if (overwrite) {
-                adapter.delete(fileBucket, destPathRaw);
+                toAdapterManager.adapter.delete(toAdapterManager.fileBucket, destPathRaw);
             } else {
                 status.setCode(HttpServletResponse.SC_PRECONDITION_FAILED);
                 return status;
@@ -353,8 +354,8 @@ public class AdapterManager {
         URI destUriObj = URI.create(toAdapterManager.uri);
         String destPathRaw = destUriObj.getPath();
 
-        boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
-        if (adapter.hasPath(fileBucket, destPathRaw) && !overwrite) {
+        boolean overwrite = request == null || !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
+        if (toAdapterManager.adapter.hasPath(toAdapterManager.fileBucket, destPathRaw) && !overwrite) {
             status.setCode(HttpServletResponse.SC_BAD_REQUEST);
             status.setMessage("Destination already exists！");
             return status;
