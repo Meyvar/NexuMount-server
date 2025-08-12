@@ -2,10 +2,7 @@ package cn.joker.webdav.fileTask.taskImpl;
 
 import cn.hutool.core.io.FileUtil;
 import cn.joker.webdav.business.entity.FileBucket;
-import cn.joker.webdav.fileTask.FileTransferTask;
-import cn.joker.webdav.fileTask.TaskManager;
-import cn.joker.webdav.fileTask.TaskMeta;
-import cn.joker.webdav.fileTask.TaskStatus;
+import cn.joker.webdav.fileTask.*;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.SystemFileAdapter;
@@ -25,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.DecimalFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,8 +34,9 @@ public class CopyTask extends FileTransferTask {
 
     @Override
     public void taskContent(TaskManager tm, TaskMeta meta) throws Exception {
+        meta.setFromPath(fromPath);
+
         String describe = fromPath + " copy to " + toPath;
-        System.out.println(describe);
 
         meta.setDescribe(describe + " (Downloading...)");
 
@@ -60,7 +59,7 @@ public class CopyTask extends FileTransferTask {
             }
 
             meta.setStatus(TaskStatus.COMPLETED);
-            meta.setProgress(100);
+            meta.setProgress("100");
             meta.setDescribe(describe + " (Success)");
         } else {
             if (fromAdapter instanceof SystemFileAdapter) {
@@ -93,12 +92,21 @@ public class CopyTask extends FileTransferTask {
 
                 long startTime = System.currentTimeMillis();
 
+
+                DecimalFormat df = new DecimalFormat("#.##");
+
                 while ((bytesRead = in.read(buffer)) != -1) {
 
                     // 检查暂停
-                    if (tm.isPaused(taskId)) {
-                        meta.setStatus(TaskStatus.PAUSED);
-                        return; // 退出，线程释放
+                    synchronized (this) {
+                        while (tm.isPaused(taskId)) {
+                            this.wait(); // 线程挂起，等待唤醒
+                        }
+                    }
+
+                    //任务取消
+                    if (cancelled) {
+                        return;
                     }
 
                     out.write(buffer, 0, bytesRead);
@@ -109,14 +117,14 @@ public class CopyTask extends FileTransferTask {
                     // 计算进度
                     if (totalSize > 0) {
                         double progress = (downloaded * 100.0 / totalSize);
-                        meta.setProgress(progress);
+                        meta.setProgress(df.format(progress));
                     }
 
                     // 计算速度（KB/s）
                     long elapsed = (System.currentTimeMillis() - startTime) / 1000;
                     if (elapsed > 0) {
                         double speed = downloaded / 1024.0 / elapsed;
-                        meta.setElapsed(speed);
+                        meta.setElapsed(df.format(speed));
                     }
                 }
 
@@ -127,7 +135,26 @@ public class CopyTask extends FileTransferTask {
 
             meta.setDescribe(describe + " (Uploading...)");
 
-            toAdapter.put(toBucket, toPath, targetPath);
+            meta.setElapsed("0");
+            meta.setProgress("0");
+            meta.setSchedule("文件上传");
+
+            toAdapter.put(toBucket, toPath, targetPath, new UploadHook() {
+                @Override
+                public void pause() throws InterruptedException {
+                    synchronized (CopyTask.this) {
+                        while (tm.isPaused(taskId)) {
+                            CopyTask.this.wait(); // 线程挂起，等待唤醒
+                        }
+                    }
+                }
+
+
+                @Override
+                public boolean cancel() {
+                    return CopyTask.this.cancelled;
+                }
+            });
 
             // 更新进度
             meta.setStatus(TaskStatus.COMPLETED);

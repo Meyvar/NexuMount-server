@@ -1,6 +1,7 @@
 package cn.joker.webdav.webdav.adapter;
 
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
@@ -78,7 +79,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path,  Path tempFilePath) {
+    public void put(FileBucket fileBucket, String path,  Path tempFilePath, UploadHook hook) {
 
     }
 

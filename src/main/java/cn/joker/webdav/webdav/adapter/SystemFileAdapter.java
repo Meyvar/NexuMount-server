@@ -5,6 +5,7 @@ import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.entity.SysSetting;
 import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
@@ -236,7 +237,7 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path, Path tempFilePath) throws IOException {
+    public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws IOException {
 
         // 确保父目录存在
         Path targetPath = Paths.get(path);

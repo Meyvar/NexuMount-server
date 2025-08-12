@@ -1,6 +1,7 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
 
@@ -53,7 +54,7 @@ public interface IFileAdapter {
      * @param fileBucket 文件桶
      * @param path       上传路径
      */
-    void put(FileBucket fileBucket, String path, Path tempFilePath) throws Exception;
+    void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception;
 
     /**
      * 删除资源

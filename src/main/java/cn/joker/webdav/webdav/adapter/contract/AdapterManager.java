@@ -310,7 +310,7 @@ public class AdapterManager {
         }
 
         try {
-            adapter.put(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), Paths.get(filePath));
+            adapter.put(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), Paths.get(filePath), null);
         } catch (Exception e) {
             throw e;
         } finally {

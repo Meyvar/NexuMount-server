@@ -6,13 +6,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Component
 public class TaskManager {
-
-    private static TaskManager INSTANCE = new TaskManager();
 
     @Qualifier("fileTransferExecutor")
     @Autowired
@@ -23,15 +23,6 @@ public class TaskManager {
     private final ConcurrentMap<String, Boolean> pausedTasks = new ConcurrentHashMap<>();
 
     private TaskManager() {
-    }
-
-    @PostConstruct
-    public void init() {
-        INSTANCE = this; // 保存 Spring 管理的实例
-    }
-
-    public static TaskManager getInstance() {
-        return INSTANCE;
     }
 
     public TaskMeta getTaskMeta(String taskId) {
@@ -66,9 +57,10 @@ public class TaskManager {
         meta.setStatus(TaskStatus.RUNNING);
 
         // 从进度点继续传输
-        FileTransferTask task = null;
-        runningTasks.put(taskId, task);
-        executor.submit(task);
+        FileTransferTask task = runningTasks.get(taskId);
+        synchronized (task) {
+            task.notify();
+        }
     }
 
     public void cancelTask(String taskId) {
@@ -89,6 +81,58 @@ public class TaskManager {
 
     public TaskMeta getTaskStatus(String taskId) {
         return taskMetaMap.get(taskId);
+    }
+
+    public List<TaskMeta> getRunningTasks() {
+        return taskMetaMap.values().stream()
+                .filter(meta -> meta.getStatus() == TaskStatus.RUNNING || meta.getStatus() == TaskStatus.PAUSED)
+                .collect(Collectors.toList());
+    }
+
+    public List<TaskMeta> getCompletedTasks() {
+        return taskMetaMap.values().stream()
+                .filter(meta -> meta.getStatus() == TaskStatus.COMPLETED || meta.getStatus() == TaskStatus.CANCELLED || meta.getStatus() == TaskStatus.ERROR)
+                .collect(Collectors.toList());
+    }
+
+    public void removeAllCompletedTasks() {
+        List<String> toRemove = taskMetaMap.entrySet().stream()
+                .filter(entry -> {
+                    TaskStatus status = entry.getValue().getStatus();
+                    return status == TaskStatus.COMPLETED || status == TaskStatus.CANCELLED;
+                })
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        toRemove.forEach(taskId -> {
+            taskMetaMap.remove(taskId);
+            runningTasks.remove(taskId);
+            pausedTasks.remove(taskId);
+        });
+    }
+
+    public void restartFailedTask(String taskId) {
+        TaskMeta meta = taskMetaMap.get(taskId);
+        if (meta == null) {
+            System.out.println("任务不存在: " + taskId);
+            return;
+        }
+        if (meta.getStatus() != TaskStatus.ERROR) {
+            System.out.println("任务状态不是失败，无法重启: " + taskId);
+            return;
+        }
+        startTask(taskId, runningTasks.get(taskId), meta.getUserToken());
+    }
+
+    public void removeTask(String taskId) {
+        // 先取消任务（如果正在执行）
+        FileTransferTask task = runningTasks.remove(taskId);
+        if (task != null) {
+            task.cancel();
+        }
+        // 移除任务元信息和暂停状态
+        taskMetaMap.remove(taskId);
+        pausedTasks.remove(taskId);
     }
 }
 

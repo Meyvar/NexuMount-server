@@ -8,6 +8,7 @@ import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
@@ -140,7 +141,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     @Override
-    public void put(FileBucket fileBucket, String path, Path tempFilePath) throws Exception {
+    public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception {
         Path filePath = Paths.get(path);
 
         String id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
@@ -293,6 +294,13 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                     byte[] buffer = new byte[20971520];
 
                     for (int i = 0; i < partInfos.size(); i++) {
+
+                        hook.pause();
+
+                        if (hook.cancel()){
+                            return;
+                        }
+
                         jsonObject = partInfos.getJSONObject(i);
 
                         url = jsonObject.getString("uploadUrl");

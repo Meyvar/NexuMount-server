@@ -2,6 +2,7 @@ package cn.joker.webdav.fileTask;
 
 import cn.dev33.satoken.stp.StpLogic;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
 
@@ -35,7 +36,7 @@ public abstract class FileTransferTask implements Runnable {
 
     @Override
     public void run() {
-        TaskManager tm = TaskManager.getInstance();
+        TaskManager tm = SpringUtil.getBean(TaskManager.class);
         TaskMeta meta = tm.getTaskMeta(taskId);
         if (meta == null) {
             return;
@@ -69,7 +70,7 @@ public abstract class FileTransferTask implements Runnable {
 
         } catch (Exception e) {
             meta.setStatus(TaskStatus.ERROR);
-            meta.setError(e);
+            meta.setError(e.getMessage());
             e.printStackTrace();
         } finally {
             try {
