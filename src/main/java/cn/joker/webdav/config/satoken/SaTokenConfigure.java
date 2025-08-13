@@ -20,6 +20,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                 try {
                     String token = RequestHolder.getRequest().getParameter("token");
                     StpUtil.getTokenSessionByToken(token);
+                    StpUtil.getStpLogic().setTokenValue(token);
                 } catch (Exception e) {
                     StpUtil.checkLogin();
                 }

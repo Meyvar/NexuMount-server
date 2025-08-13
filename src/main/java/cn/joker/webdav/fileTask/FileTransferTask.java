@@ -1,8 +1,9 @@
 package cn.joker.webdav.fileTask;
 
 import cn.hutool.extra.spring.SpringUtil;
-import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.config.ExternalConfig;
+import cn.joker.webdav.utils.SprintContextUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,15 +33,11 @@ public abstract class FileTransferTask implements Runnable {
         }
 
         try {
-            String jarPath = Paths.get(
-                    WebDavServerApplication.class.getProtectionDomain()
-                            .getCodeSource()
-                            .getLocation()
-                            .toURI()
-            ).toFile().getParent();
+
+            ExternalConfig externalConfig = SprintContextUtil.getBean("externalConfig", ExternalConfig.class);
 
             // 确保父目录存在
-            Path targetPath = Paths.get(jarPath + "/temp/");
+            Path targetPath = Paths.get(externalConfig.getTargetPath());
             if (!Files.exists(targetPath)) {
                 Files.createDirectories(targetPath);
             }

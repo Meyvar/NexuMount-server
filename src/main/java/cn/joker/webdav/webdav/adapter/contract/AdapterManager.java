@@ -1,18 +1,16 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
-import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.config.ExternalConfig;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
 import cn.joker.webdav.webdav.entity.FileResource;
-import cn.joker.webdav.webdav.entity.GetFileResource;
 import cn.joker.webdav.webdav.entity.RequestStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.Data;
 import lombok.Getter;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -20,8 +18,6 @@ import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -278,15 +274,10 @@ public class AdapterManager {
             mTime = req.getHeader("Last-Modified");
         }
 
-        String jarPath = Paths.get(
-                WebDavServerApplication.class.getProtectionDomain()
-                        .getCodeSource()
-                        .getLocation()
-                        .toURI()
-        ).toFile().getParent();
+        ExternalConfig externalConfig = SprintContextUtil.getBean("externalConfig", ExternalConfig.class);
 
         // 确保父目录存在
-        Path targetPath = Paths.get(jarPath + "/temp/");
+        Path targetPath = Paths.get(externalConfig.getTargetPath());
         if (!Files.exists(targetPath)) {
             Files.createDirectories(targetPath);
         }

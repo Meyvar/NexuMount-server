@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: "optional:file:config/external.yml"
   cache:
     type: caffeine
     cache-names:
