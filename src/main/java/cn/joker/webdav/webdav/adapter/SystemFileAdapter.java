@@ -7,6 +7,7 @@ import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
@@ -288,7 +289,15 @@ public class SystemFileAdapter implements IFileAdapter {
             cleanCache(fromFileBucket.getPath(), Paths.get(fromPath).getParent().toString());
             cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
         } else {
+            //夸桶操作
 
+            SysSetting sysSetting = sysSettingService.get();
+            String token = StpUtil.getTokenValue();
+
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSetting.getTaskBufferSize());
+
+            taskManager.startTask(uuid, moveTask, token);
         }
     }
 

@@ -23,9 +23,9 @@ import java.text.DecimalFormat;
 import java.util.List;
 import java.util.UUID;
 
-public class CopyTask extends FileTransferTask {
+public class MoveTask extends FileTransferTask {
 
-    public CopyTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath, String taskBufferSize) {
+    public MoveTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath, String taskBufferSize) {
         this.taskId = taskId;
         this.fromBucket = fromBucket;
         this.toBucket = toBucket;
@@ -55,7 +55,7 @@ public class CopyTask extends FileTransferTask {
 
                 String uuid = UUID.randomUUID().toString().replace("-", "");
 
-                CopyTask copyTask = new CopyTask(uuid, fromBucket, toBucket, PathUtils.normalizePath(fromBucket.getSourcePath() + fileResource.getHref().replaceFirst(fromBucket.getPath(), "/")), toPath + "/" + fileResource.getName(), taskBufferSize);
+                MoveTask copyTask = new MoveTask(uuid, fromBucket, toBucket, PathUtils.normalizePath(fromBucket.getSourcePath() + fileResource.getHref().replaceFirst(fromBucket.getPath(), "/")), toPath + "/" + fileResource.getName(), taskBufferSize);
 
                 tm.startTask(uuid, copyTask, meta.getUserToken());
             }
@@ -63,6 +63,7 @@ public class CopyTask extends FileTransferTask {
             meta.setStatus(TaskStatus.COMPLETED);
             meta.setProgress("100");
             meta.setDescribe(describe + " (Success)");
+
         } else {
             if (fromAdapter instanceof SystemFileAdapter) {
                 Files.copy(Paths.get(fromPath), targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -144,9 +145,9 @@ public class CopyTask extends FileTransferTask {
             toAdapter.put(toBucket, toPath, targetPath, new UploadHook() {
                 @Override
                 public void pause() throws InterruptedException {
-                    synchronized (CopyTask.this) {
+                    synchronized (MoveTask.this) {
                         while (tm.isPaused(taskId)) {
-                            CopyTask.this.wait(); // 线程挂起，等待唤醒
+                            MoveTask.this.wait(); // 线程挂起，等待唤醒
                         }
                     }
                 }
@@ -154,7 +155,7 @@ public class CopyTask extends FileTransferTask {
 
                 @Override
                 public boolean cancel() {
-                    return CopyTask.this.cancelled;
+                    return MoveTask.this.cancelled;
                 }
             });
 
@@ -163,5 +164,12 @@ public class CopyTask extends FileTransferTask {
 
             meta.setDescribe(describe + " (Success)");
         }
+
+
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+
+        MoveRemoveTask moveRemoveTask = new MoveRemoveTask(uuid, fromBucket, fromPath);
+
+        tm.startTask(uuid, moveRemoveTask, meta.getUserToken());
     }
 }

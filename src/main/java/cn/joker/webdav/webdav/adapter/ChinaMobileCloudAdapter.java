@@ -10,6 +10,7 @@ import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
@@ -448,7 +449,11 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(toPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
 
         } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
 
+            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
         }
 
 

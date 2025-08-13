@@ -1,6 +1,6 @@
 package cn.joker.webdav.fileTask;
 
-import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -14,9 +14,13 @@ import java.util.stream.Collectors;
 @Component
 public class TaskManager {
 
+    @Getter
     @Qualifier("fileTransferExecutor")
     @Autowired
     private ThreadPoolTaskExecutor executor;
+
+    @Getter
+    private ScheduledExecutorService  scheduledExecutorService =  Executors.newScheduledThreadPool(10);
 
     private final Map<String, TaskMeta> taskMetaMap = new ConcurrentHashMap<>();
     private final Map<String, FileTransferTask> runningTasks = new ConcurrentHashMap<>();
@@ -77,6 +81,11 @@ public class TaskManager {
 
     public boolean isPaused(String taskId) {
         return pausedTasks.getOrDefault(taskId, false);
+    }
+
+    public boolean isCancelled(String taskId) {
+        TaskMeta meta = taskMetaMap.get(taskId);
+        return meta != null && meta.getStatus() == TaskStatus.CANCELLED;
     }
 
     public TaskMeta getTaskStatus(String taskId) {

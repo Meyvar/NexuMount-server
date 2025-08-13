@@ -1,7 +1,5 @@
 package cn.joker.webdav.fileTask;
 
-import cn.dev33.satoken.stp.StpLogic;
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.joker.webdav.WebDavServerApplication;
 import cn.joker.webdav.business.entity.FileBucket;
@@ -23,22 +21,13 @@ public abstract class FileTransferTask implements Runnable {
 
     protected volatile boolean cancelled = false;
 
-    public FileTransferTask(String taskId, FileBucket fromBucket, FileBucket toBucket, String fromPath, String toPath, String taskBufferSize) {
-        this.taskId = taskId;
-        this.fromBucket = fromBucket;
-        this.toBucket = toBucket;
-        this.fromPath = fromPath;
-        this.toPath = toPath;
-        this.taskBufferSize = taskBufferSize;
-    }
-
     public abstract void taskContent(TaskManager tm, TaskMeta meta) throws Exception;
 
     @Override
     public void run() {
         TaskManager tm = SpringUtil.getBean(TaskManager.class);
         TaskMeta meta = tm.getTaskMeta(taskId);
-        if (meta == null) {
+        if (meta == null || tm.isPaused(taskId) || tm.isCancelled(taskId)) {
             return;
         }
 
@@ -56,16 +45,16 @@ public abstract class FileTransferTask implements Runnable {
                 Files.createDirectories(targetPath);
             }
 
-            this.targetPath = Paths.get(targetPath + "/" + Paths.get(fromPath).getFileName());
+            this.targetPath = Paths.get(targetPath + "/" + taskId + Paths.get(fromPath).getFileName());
 
             taskContent(tm, meta);
 
             if (cancelled) {
                 meta.setStatus(TaskStatus.CANCELLED);
-                System.out.println("任务 " + taskId + " 取消");
+            } else if (meta.getStatus() == TaskStatus.PAUSED) {
+                meta.setStatus(TaskStatus.PAUSED);
             } else {
                 meta.setStatus(TaskStatus.COMPLETED);
-                System.out.println("任务 " + taskId + " 完成");
             }
 
         } catch (Exception e) {
