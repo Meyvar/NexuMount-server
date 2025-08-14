@@ -18,6 +18,8 @@ import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -342,7 +344,7 @@ public class AdapterManager {
 
         HttpServletRequest request = RequestHolder.getRequest();
 
-        URI destUriObj = URI.create(toAdapterManager.uri);
+        URI destUriObj = URI.create(URLEncoder.encode(toAdapterManager.uri, StandardCharsets.UTF_8));
         String destPathRaw = destUriObj.getPath();
 
         boolean overwrite = request == null || !"F".equalsIgnoreCase(request.getHeader("Overwrite"));

@@ -162,7 +162,8 @@ public class ApiServiceImpl implements IApiService {
         String destPathRaw = destUriObj.getPath();
 
         RequestParam toParam = new RequestParam();;
-        toParam.setPath(destPathRaw);
+        Path path = Paths.get(param.getPath());
+        toParam.setPath(destPathRaw + path.getFileName());
 
         AdapterManager toAdapterManager = getAdapterManager(toParam);
 
@@ -189,7 +190,8 @@ public class ApiServiceImpl implements IApiService {
         String destPathRaw = destUriObj.getPath();
 
         RequestParam toParam = new RequestParam();;
-        toParam.setPath(destPathRaw);
+        Path path = Paths.get(param.getPath());
+        toParam.setPath(destPathRaw + path.getFileName());
 
         AdapterManager toAdapterManager = getAdapterManager(toParam);
 

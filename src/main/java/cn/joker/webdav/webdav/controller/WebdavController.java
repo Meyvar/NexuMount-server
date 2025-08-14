@@ -29,6 +29,16 @@ public class WebdavController {
         return Response.success();
     }
 
+    @PostMapping("/deleteList.do")
+    public Response<String> deleteList(@RequestBody List<String> pathList) {
+        pathList.forEach(path -> {
+            RequestParam param = new RequestParam();
+            param.setPath(path);
+            apiService.delete(param);
+        });
+        return Response.success();
+    }
+
     @GetMapping("/get.do")
     public Response<FileResource> get(RequestParam param) {
         return Response.success(apiService.get(param));
@@ -68,10 +78,32 @@ public class WebdavController {
         return Response.success();
     }
 
+    @PostMapping("/moveList.do")
+    public Response<String> moveList(@RequestBody List<String> pathList) {
+        pathList.forEach(path -> {
+            RequestParam param = new RequestParam();
+            param.setMethod("moveList");
+            param.setPath(path);
+            apiService.move(param);
+        });
+        return Response.success();
+    }
+
 
     @PostMapping("/copy.do")
     public Response<String> copy(RequestParam param) {
         apiService.copy(param);
+        return Response.success();
+    }
+
+    @PostMapping("/copyList.do")
+    public Response<String> copyList(@RequestBody List<String> pathList) {
+        pathList.forEach(path -> {
+            RequestParam param = new RequestParam();
+            param.setMethod("copyList");
+            param.setPath(path);
+            apiService.copy(param);
+        });
         return Response.success();
     }
 }

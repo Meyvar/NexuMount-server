@@ -38,6 +38,7 @@ public class TaskManager {
         pausedTasks.put(taskId, false);
         meta.setStatus(TaskStatus.RUNNING);
 
+        meta.setDescribe(task.fromPath);
         runningTasks.put(taskId, task);
         executor.submit(task);
     }

@@ -40,6 +40,7 @@ public class MoveTask extends FileTransferTask {
 
         String describe = fromPath + " copy to " + toPath;
 
+        meta.setSchedule("文件下载");
         meta.setDescribe(describe + " (Downloading...)");
 
         IFileAdapter fromAdapter = SprintContextUtil.getBean(fromBucket.getAdapter(), IFileAdapter.class);
