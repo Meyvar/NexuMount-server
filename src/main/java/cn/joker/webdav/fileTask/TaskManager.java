@@ -1,6 +1,7 @@
 package cn.joker.webdav.fileTask;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -9,28 +10,49 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component
 public class TaskManager {
 
     @Getter
-    @Qualifier("fileTransferExecutor")
-    @Autowired
-    private ThreadPoolTaskExecutor executor;
+    private ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory());
 
     @Getter
-    private ScheduledExecutorService  scheduledExecutorService =  Executors.newScheduledThreadPool(10);
+    private Semaphore semaphore;
+
+    private final AtomicInteger maxPermits =  new AtomicInteger(0);
+
+    @Getter
+    private ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
     private final Map<String, TaskMeta> taskMetaMap = new ConcurrentHashMap<>();
     private final Map<String, FileTransferTask> runningTasks = new ConcurrentHashMap<>();
+
+    @Getter
     private final ConcurrentMap<String, Boolean> pausedTasks = new ConcurrentHashMap<>();
 
     private TaskManager() {
+        semaphore =  new Semaphore(maxPermits.get());
     }
 
     public TaskMeta getTaskMeta(String taskId) {
         return taskMetaMap.get(taskId);
+    }
+
+    public void setMaxPermits(int newMax) {
+        int oldMax = maxPermits.getAndSet(newMax);
+        int diff = newMax - oldMax;
+        if (diff > 0) {
+            semaphore.release(diff);  // 增加并发额度
+        } else if (diff < 0) {
+            try {
+                semaphore.acquire(-diff); // 占用多余的 permits
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     public void startTask(String taskId, FileTransferTask task, String userToken) {
@@ -40,7 +62,18 @@ public class TaskManager {
 
         meta.setDescribe(task.fromPath);
         runningTasks.put(taskId, task);
-        executor.submit(task);
+        executor.submit(() -> {
+            try {
+                semaphore.acquire(); // 获取许可，控制并发
+                try {
+                    task.run();
+                } finally {
+                    semaphore.release(); // 释放许可
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
 
     public void pauseTask(String taskId) {
@@ -63,8 +96,11 @@ public class TaskManager {
 
         // 从进度点继续传输
         FileTransferTask task = runningTasks.get(taskId);
-        synchronized (task) {
-            task.notify();
+        task.pauseLock.lock();
+        try {
+            task.unpaused.signal(); // 唤醒挂起的虚拟线程
+        } finally {
+            task.pauseLock.unlock();
         }
     }
 

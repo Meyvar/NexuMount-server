@@ -99,12 +99,28 @@ public class MoveTask extends FileTransferTask {
 
                 DecimalFormat df = new DecimalFormat("#.##");
 
+                boolean released = false;
                 while ((bytesRead = in.read(buffer)) != -1) {
 
                     // 检查暂停
-                    synchronized (this) {
-                        while (tm.isPaused(taskId)) {
-                            this.wait(); // 线程挂起，等待唤醒
+                    if (tm.isPaused(taskId)) {
+                        if (!released) {
+                            tm.getSemaphore().release(); // 只释放一次
+                            released = true;
+                        }
+
+                        pauseLock.lock();
+                        try {
+                            while (tm.isPaused(taskId)) {
+                                unpaused.await(); // 挂起虚拟线程
+                            }
+                        } finally {
+                            pauseLock.unlock();
+                        }
+
+                        if (released) {
+                            tm.getSemaphore().acquire(); // 恢复时重新占用名额
+                            released = false; // 重置
                         }
                     }
 
@@ -144,11 +160,28 @@ public class MoveTask extends FileTransferTask {
             meta.setSchedule("文件上传");
 
             toAdapter.put(toBucket, toPath, targetPath, new UploadHook() {
+                private boolean released = false;
+
                 @Override
                 public void pause() throws InterruptedException {
-                    synchronized (MoveTask.this) {
-                        while (tm.isPaused(taskId)) {
-                            MoveTask.this.wait(); // 线程挂起，等待唤醒
+                    if (tm.isPaused(taskId)) {
+                        if (!released) {
+                            tm.getSemaphore().release(); // 只释放一次
+                            released = true;
+                        }
+
+                        pauseLock.lock();
+                        try {
+                            while (tm.isPaused(taskId)) {
+                                unpaused.await(); // 挂起虚拟线程（不会占用 OS 线程）
+                            }
+                        } finally {
+                            pauseLock.unlock();
+                        }
+
+                        if (released) {
+                            tm.getSemaphore().acquire(); // 恢复时重新占用名额
+                            released = false; // 重置状态
                         }
                     }
                 }
@@ -157,6 +190,11 @@ public class MoveTask extends FileTransferTask {
                 @Override
                 public boolean cancel() {
                     return MoveTask.this.cancelled;
+                }
+
+                @Override
+                public TaskMeta getTaskMeta() {
+                    return meta;
                 }
             });
 

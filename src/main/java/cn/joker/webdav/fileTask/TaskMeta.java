@@ -45,7 +45,8 @@ public class TaskMeta {
         this.status = TaskStatus.PAUSED; // 默认暂停，启动时改为 RUNNING
         this.transferredBytes = 0;
         this.lastUpdateTime = Instant.now();
-        this.schedule = "文件下载";
+        this.schedule = "等待任务执行";
+        this.setProgress("0");
         this.userToken = userToken;
     }
 }

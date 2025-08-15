@@ -8,6 +8,7 @@ import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.TaskMeta;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.fileTask.taskImpl.MoveTask;
@@ -22,6 +23,8 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import lombok.Getter;
 import lombok.Setter;
+import okhttp3.*;
+import okio.BufferedSink;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -31,6 +34,7 @@ import java.io.*;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.util.*;
 
 @AdapterComponent(title = "中国移动云盘")
@@ -149,7 +153,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         if (!StringUtils.hasText(id) && !hasPath(fileBucket, PathUtils.toLinuxPath(filePath.getParent()))) {
             synchronized (this) {
-                String[] parts =PathUtils.toLinuxPath(filePath.getParent()).split("/");
+                String[] parts = PathUtils.toLinuxPath(filePath.getParent()).split("/");
                 StringBuilder current = new StringBuilder();
 
                 for (String part : parts) {
@@ -293,32 +297,76 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
                     InputStream fis = new FileInputStream(file);
                     byte[] buffer = new byte[20971520];
+                    DecimalFormat df = new DecimalFormat("#.##");
+                    long startTime = System.currentTimeMillis();
+
+                    TaskMeta meta;
+                    if (hook != null) {
+                        meta = hook.getTaskMeta();
+                    } else {
+                        meta = null;
+                    }
+
+
+                    final long[] uploaded = {0};
 
                     for (int i = 0; i < partInfos.size(); i++) {
 
-                        hook.pause();
-
-                        if (hook.cancel()){
-                            return;
+                        if (hook != null) {
+                            hook.pause();
+                            if (hook.cancel()) {
+                                return;
+                            }
+                            meta.setTransferredBytes((long) i * buffer.length);
                         }
 
                         jsonObject = partInfos.getJSONObject(i);
 
                         url = jsonObject.getString("uploadUrl");
 
+
+                        long totalBytes = file.length();
+
                         int bytesRead = fis.read(buffer);
-                        InputStream partStream = new ByteArrayInputStream(buffer, 0, bytesRead);
+
+                        byte[] partData = new byte[bytesRead];
+                        System.arraycopy(buffer, 0, partData, 0, bytesRead);
 
 
-                        response = HttpRequest.put(url)
+                        RequestBody requestBody = new ProgressRequestBody(partData, new ProgressListener() {
+                            long lastUpdate = System.currentTimeMillis();
+
+                            @Override
+                            public void onProgress(long bytesWritten, long contentLength) {
+                                uploaded[0] += bytesWritten;
+                                if (meta != null) {
+                                    long now = System.currentTimeMillis();
+                                    if (now - lastUpdate >= 1000) { // 每秒输出一次
+                                        double progress = uploaded[0] * 100.0 / totalBytes;
+                                        double speedKB = uploaded[0] / 1024.0 / ((now - startTime) / 1000.0);
+                                        lastUpdate = now;
+
+                                        meta.setProgress(df.format(progress));
+                                        meta.setElapsed(df.format(speedKB));
+
+                                    }
+                                }
+                            }
+                        });
+
+                        Request request = new Request.Builder()
+                                .url(url)
                                 .header("Content-Type", "application/octet-stream")
-                                .body(partStream.readAllBytes())
-                                .execute();
+                                .put(requestBody)
+                                .build();
 
+                        OkHttpClient client = new OkHttpClient();
+                        Response okResponse = client.newCall(request).execute();
 
-                        if (!response.isOk()) {
-                            throw new RuntimeException("status is " + response.getStatus());
+                        if (!okResponse.isSuccessful()) {
+                            throw new RuntimeException("status is " + okResponse.code());
                         }
+
                     }
 
                     fis.close();
@@ -735,6 +783,43 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 }
             } else {
                 throw new RuntimeException("get task failed");
+            }
+        }
+    }
+
+    public interface ProgressListener {
+        void onProgress(long bytesWritten, long contentLength);
+    }
+
+    private static class ProgressRequestBody extends RequestBody {
+
+        private final byte[] data;
+        private final ProgressListener listener;
+
+        public ProgressRequestBody(byte[] data, ProgressListener listener) {
+            this.data = data;
+            this.listener = listener;
+        }
+
+        @Override
+        public MediaType contentType() {
+            return MediaType.parse("application/octet-stream");
+        }
+
+        @Override
+        public long contentLength() {
+            return data.length;
+        }
+
+        @Override
+        public void writeTo(BufferedSink sink) throws IOException {
+            int offset = 0;
+            int bufferSize = 1024 * 1024; // 每次写 1MB
+            while (offset < data.length) {
+                int bytesToWrite = Math.min(bufferSize, data.length - offset);
+                sink.write(data, offset, bytesToWrite);
+                offset += bytesToWrite;
+                listener.onProgress(bytesToWrite, data.length);
             }
         }
     }

@@ -8,6 +8,7 @@ import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.SystemFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
+import kotlin.time.TimeMark;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -98,14 +99,31 @@ public class CopyTask extends FileTransferTask {
 
                 DecimalFormat df = new DecimalFormat("#.##");
 
+                boolean released = false;
                 while ((bytesRead = in.read(buffer)) != -1) {
 
-                    // 检查暂停
-                    synchronized (this) {
-                        while (tm.isPaused(taskId)) {
-                            this.wait(); // 线程挂起，等待唤醒
+                    if (tm.isPaused(taskId)) {
+                        if (!released) {
+                            tm.getSemaphore().release(); // 只释放一次
+                            released = true;
+                        }
+
+                        pauseLock.lock();
+                        try {
+                            while (tm.isPaused(taskId)) {
+                                unpaused.await(); // 挂起虚拟线程
+                            }
+                        } finally {
+                            pauseLock.unlock();
+                        }
+
+                        if (released) {
+                            tm.getSemaphore().acquire(); // 恢复时重新占用名额
+                            released = false; // 重置
                         }
                     }
+
+
 
                     //任务取消
                     if (cancelled) {
@@ -143,11 +161,28 @@ public class CopyTask extends FileTransferTask {
             meta.setSchedule("文件上传");
 
             toAdapter.put(toBucket, toPath, targetPath, new UploadHook() {
+                private boolean released = false;
+
                 @Override
                 public void pause() throws InterruptedException {
-                    synchronized (CopyTask.this) {
-                        while (tm.isPaused(taskId)) {
-                            CopyTask.this.wait(); // 线程挂起，等待唤醒
+                    if (tm.isPaused(taskId)) {
+                        if (!released) {
+                            tm.getSemaphore().release(); // 只释放一次
+                            released = true;
+                        }
+
+                        pauseLock.lock();
+                        try {
+                            while (tm.isPaused(taskId)) {
+                                unpaused.await(); // 挂起虚拟线程（不会占用 OS 线程）
+                            }
+                        } finally {
+                            pauseLock.unlock();
+                        }
+
+                        if (released) {
+                            tm.getSemaphore().acquire(); // 恢复时重新占用名额
+                            released = false; // 重置状态
                         }
                     }
                 }
@@ -156,6 +191,11 @@ public class CopyTask extends FileTransferTask {
                 @Override
                 public boolean cancel() {
                     return CopyTask.this.cancelled;
+                }
+
+                @Override
+                public TaskMeta getTaskMeta() {
+                    return meta;
                 }
             });
 

@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class FileTransferTask implements Runnable {
 
@@ -22,13 +24,18 @@ public abstract class FileTransferTask implements Runnable {
 
     protected volatile boolean cancelled = false;
 
+    protected final ReentrantLock pauseLock = new ReentrantLock();
+    protected final Condition unpaused = pauseLock.newCondition();
+
     public abstract void taskContent(TaskManager tm, TaskMeta meta) throws Exception;
+
+    TaskManager tm = SpringUtil.getBean(TaskManager.class);
+
 
     @Override
     public void run() {
-        TaskManager tm = SpringUtil.getBean(TaskManager.class);
         TaskMeta meta = tm.getTaskMeta(taskId);
-        if (meta == null || tm.isPaused(taskId) || tm.isCancelled(taskId)) {
+        if (meta == null || tm.isCancelled(taskId)) {
             return;
         }
 
@@ -69,5 +76,15 @@ public abstract class FileTransferTask implements Runnable {
 
     public void cancel() {
         cancelled = true;
+    }
+
+    public void resume() {
+        pauseLock.lock();
+        try {
+            tm.getPausedTasks().put(taskId, false);
+            unpaused.signal();
+        } finally {
+            pauseLock.unlock();
+        }
     }
 }
