@@ -1,4 +1,7 @@
 spring:
+  web:
+    resources:
+      static-locations: file:html/
   config:
     import: "optional:file:config/external.yml"
   cache:
