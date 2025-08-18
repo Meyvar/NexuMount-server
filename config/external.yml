@@ -3,3 +3,7 @@ server:
 
 storage:
   target-path: temp/
+
+sa-token:
+  # token有效期，单位s
+  timeout: 86400

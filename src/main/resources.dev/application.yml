@@ -12,8 +12,6 @@ spring:
 sa-token:
   # token名称
   token-name: Authorization-Key
-  # token有效期，单位s 开发环境设置较短
-  timeout: 86400
   # token活跃有效期
   active-timeout: 1800
   # 是否允许同一账号并发登录
