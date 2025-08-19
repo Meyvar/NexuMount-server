@@ -36,9 +36,6 @@ import java.util.zip.ZipOutputStream;
 public class SystemFileAdapter implements IFileAdapter {
 
     @Autowired
-    private CacheManager cacheManager;
-
-    @Autowired
     private TaskManager taskManager;
 
     @Autowired
@@ -96,26 +93,6 @@ public class SystemFileAdapter implements IFileAdapter {
         }
         Path filePath = Path.of(fileBucket.getSourcePath() + uri);
 
-
-        Cache cache = cacheManager.getCache("fileResourceMap");
-
-        Map<String, List<FileResource>> map = cache.get("systemFileAdapter:" + fileBucket.getPath(), Map.class);
-
-        if (map == null) {
-            map = new HashMap<>();
-        }
-
-        List<FileResource> resourceList = map.get(filePath.toString());
-
-        if (resourceList != null && !resourceList.isEmpty()) {
-            if (refresh) {
-                map.remove(filePath.toString());
-            } else {
-                return new ArrayList<>(resourceList);
-            }
-        }
-
-
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
 
@@ -147,8 +124,6 @@ public class SystemFileAdapter implements IFileAdapter {
                 ressource.setHref(fileBucket.getPath() + uri + f.getName());
                 list.add(ressource);
             }
-            map.put(filePath.toString(), new ArrayList<>(list));
-            cache.put("systemFileAdapter:" + filePath, map);
         }
 
         return list;
@@ -244,7 +219,6 @@ public class SystemFileAdapter implements IFileAdapter {
         Path targetPath = Paths.get(path);
         if (targetPath.getParent() != null) {
             Files.createDirectories(targetPath.getParent());
-            cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
         }
 
         Files.copy(tempFilePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -271,13 +245,11 @@ public class SystemFileAdapter implements IFileAdapter {
         } else {
             Files.delete(Paths.get(path));
         }
-        cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
     }
 
     @Override
     public void mkcol(FileBucket fileBucket, String path) throws IOException {
         Files.createDirectories(Paths.get(path));
-        cleanCache(fileBucket.getPath(), Paths.get(path).getParent().toString());
     }
 
     @Override
@@ -286,8 +258,6 @@ public class SystemFileAdapter implements IFileAdapter {
             Files.createDirectories(Paths.get(toPath).getParent());
             Files.move(Paths.get(fromPath), Paths.get(toPath));
 
-            cleanCache(fromFileBucket.getPath(), Paths.get(fromPath).getParent().toString());
-            cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
         } else {
             //夸桶操作
 
@@ -321,8 +291,6 @@ public class SystemFileAdapter implements IFileAdapter {
                 Files.createDirectories(destFile.getParentFile().toPath());
                 Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
-
-            cleanCache(fromFileBucket.getPath(), Paths.get(toPath).getParent().toString());
         } else {
             //夸桶操作
 
@@ -344,13 +312,5 @@ public class SystemFileAdapter implements IFileAdapter {
     @Override
     public String workStatus(FileBucket fileBucket) {
         return "work";
-    }
-
-    private void cleanCache(String path, String id) {
-        Cache cache = cacheManager.getCache("fileResourceMap");
-        Map<String, List<FileResource>> map = cache.get("systemFileAdapter:" + path, Map.class);
-        if (map != null) {
-            map.remove(id);
-        }
     }
 }

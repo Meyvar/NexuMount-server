@@ -1,6 +1,7 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.cache.FileTreeCacheService;
 import cn.joker.webdav.config.ExternalConfig;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
@@ -36,6 +37,8 @@ public class AdapterManager {
 
     private CacheManager cacheManager;
 
+    FileTreeCacheService fileTreeCacheService;
+
     @Getter
     private IFileAdapter adapter;
 
@@ -55,6 +58,7 @@ public class AdapterManager {
         }
         uri = this.userPath + uri;
         cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
+        fileTreeCacheService = SprintContextUtil.getApplicationContext().getBean("fileTreeCacheService", FileTreeCacheService.class);
 
         if ("/".equals(uri)) {
             fileBucket = (FileBucket) cacheManager.getCache("fileBucketList").get(uri).get();
@@ -170,7 +174,22 @@ public class AdapterManager {
             return status;
         }
 
-        List<FileResource> list = adapter.propFind(fileBucket, uri, refresh);
+        if (refresh) {
+            fileTreeCacheService.removeChild(fileBucket.getPath() + uri);
+        }
+
+        List<FileResource> list = fileTreeCacheService.getChildren(fileBucket.getPath() + uri);
+
+        if (list != null && !list.isEmpty()) {
+            for (FileResource resource : list) {
+                resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
+            }
+
+            status.setFileResources(list);
+            return status;
+        }
+
+        list = adapter.propFind(fileBucket, uri, refresh);
 
         for (FileBucket bucket : fileBucketList) {
             FileResource resource = new FileResource();
@@ -226,6 +245,8 @@ public class AdapterManager {
                 }
             }
         });
+
+        fileTreeCacheService.addChildren(fileBucket.getPath() + uri, list);
 
         for (FileResource resource : list) {
             resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));

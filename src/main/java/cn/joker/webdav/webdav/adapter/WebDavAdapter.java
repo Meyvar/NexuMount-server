@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter;
 
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.fileTask.UploadHook;
+import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
@@ -12,10 +13,16 @@ import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @AdapterComponent(title = "WebDav")
 public class WebDavAdapter implements IFileAdapter {
@@ -42,10 +49,15 @@ public class WebDavAdapter implements IFileAdapter {
     @ParamAnnotation(label = "密码")
     private String password;
 
+    @Autowired
+    private CacheManager cacheManager;
 
-    private Sardine getSardine(FileBucket fileBucket) throws IOException {
+    private Sardine getSardine(FileBucket fileBucket) {
         JSONObject jsonObject = fileBucket.getFieldJson();
-        String url = jsonObject.getString("url")  + ":" + jsonObject.getString("prot") + fileBucket.getSourcePath();
+        String url = jsonObject.getString("url") + ":" + jsonObject.getString("prot") + fileBucket.getSourcePath();
+        if (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
         jsonObject.put("davUrl", url);
         Sardine sardine = SardineFactory.begin(jsonObject.getString("username"), jsonObject.getString("password"));
         return sardine;
@@ -54,18 +66,13 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
-        List<FileResource> list = null;
+        Sardine sardine = getSardine(fileBucket);
         try {
-            list = propFind(fileBucket, path, false);
+            List<DavResource> resources = sardine.list(fileBucket.getFieldJson().getString("davUrl") + path, 0);
+            return resources != null && !resources.isEmpty();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException(e.getMessage());
-        }
-
-        if (list == null || list.isEmpty()) {
             return false;
-        } else {
-            return true;
         }
     }
 
@@ -76,10 +83,38 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
-        Sardine sardine = getSardine(fileBucket);
-        List<DavResource> resources = sardine.list(fileBucket.getFieldJson().getString("davUrl") + uri);
+        Cache cache = cacheManager.getCache("fileResourceMap");
 
-        return List.of();
+        Map<String, List<FileResource>> map = cache.get("webDavAdapter:" + fileBucket.getPath(), Map.class);
+
+        if (map == null) {
+            map = new HashMap<>();
+        }
+
+
+        Sardine sardine = getSardine(fileBucket);
+        List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + uri);
+
+        List<FileResource> list = new ArrayList<>();
+
+        davResourceList.forEach(davResource -> {
+
+            if (davResource.getHref().getPath().equals("/") || davResource.getHref().getPath().equals(uri + "/")){
+                return;
+            }
+
+            FileResource fileResource = new FileResource();
+            fileResource.setName(davResource.getName());
+            fileResource.setContentType(davResource.getContentType());
+            fileResource.setHref(PathUtils.normalizePath(fileBucket.getPath() + davResource.getHref().getPath()));
+            fileResource.setType(davResource.isDirectory() ? "folder" : "file");
+            fileResource.setSize(davResource.getContentLength());
+            fileResource.setDate(davResource.getModified());
+
+            list.add(fileResource);
+        });
+
+        return list;
     }
 
     @Override

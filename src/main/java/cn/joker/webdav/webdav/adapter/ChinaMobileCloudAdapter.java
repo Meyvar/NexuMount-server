@@ -7,6 +7,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.service.ISysSettingService;
+import cn.joker.webdav.cache.FileTreeCacheService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.TaskMeta;
 import cn.joker.webdav.fileTask.UploadHook;
@@ -26,8 +27,6 @@ import lombok.Setter;
 import okhttp3.*;
 import okio.BufferedSink;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
@@ -41,7 +40,7 @@ import java.util.*;
 public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Autowired
-    private CacheManager cacheManager;
+    private FileTreeCacheService fileTreeCacheService;
 
     @Autowired
     private TaskManager taskManager;
@@ -61,12 +60,18 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (path.equals("/")) {
             return true;
         } else {
+            FileResource fileResource = fileTreeCacheService.getNode(fileBucket.getPath() + path);
+
+            if (fileResource != null) {
+                return true;
+            }
+
             String filePath = path;
             if (!fileBucket.getSourcePath().equals("/")) {
                 filePath = fileBucket.getSourcePath() + path;
             }
 
-            return StringUtils.hasText(queryId(filePath, fileBucket.getFieldJson().getString("authorization")));
+            return StringUtils.hasText(queryId(filePath, fileBucket));
         }
     }
 
@@ -84,7 +89,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (parent.equals("/")) {
             id = "/";
         } else {
-            id = queryId(parent, fileBucket.getFieldJson().getString("authorization"));
+            id = queryId(parent, fileBucket);
         }
 
         List<FileResource> list = list(id, fileBucket.getFieldJson().getString("authorization"));
@@ -119,11 +124,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         String id = "/";
 
         if (!path.equals("/")) {
-            id = queryId(path, fileBucket.getFieldJson().getString("authorization"));
-        }
-
-        if (refresh) {
-            cleanCache(fileBucket.getFieldJson().getString("authorization"), id);
+            id = queryId(path, fileBucket);
         }
 
         List<FileResource> list = list(id, fileBucket.getFieldJson().getString("authorization"));
@@ -149,7 +150,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception {
         Path filePath = Paths.get(path);
 
-        String id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
+        String id = queryId(filePath.getParent().toString(), fileBucket);
 
         if (!StringUtils.hasText(id) && !hasPath(fileBucket, PathUtils.toLinuxPath(filePath.getParent()))) {
             synchronized (this) {
@@ -165,12 +166,9 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                     }
                 }
 
-                id = queryId(filePath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
+                id = queryId(filePath.getParent().toString(), fileBucket);
             }
         }
-
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), id);
-
 
         File file = tempFilePath.toFile();
         String sha256 = DigestUtil.sha256Hex(file);
@@ -402,9 +400,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     @Override
     public void delete(FileBucket fileBucket, String path) throws IOException {
         Path queryPath = Paths.get(path);
-        String id = queryId(queryPath.toString(), fileBucket.getFieldJson().getString("authorization"));
-
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), queryId(queryPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization")));
+        String id = queryId(queryPath.toString(), fileBucket);
 
         String url = BASIC_URL + "/recyclebin/batchTrash";
         JSONObject jsonObject = new JSONObject();
@@ -436,10 +432,8 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (queryPath.getParent().toString().equals("/")) {
             id = "/";
         } else {
-            id = queryId(queryPath.getParent().toString(), fileBucket.getFieldJson().getString("authorization"));
+            id = queryId(queryPath.getParent().toString(), fileBucket);
         }
-
-        cleanCache(fileBucket.getFieldJson().getString("authorization"), id);
 
         String url = BASIC_URL + "/file/create";
         JSONObject jsonObject = new JSONObject();
@@ -472,8 +466,8 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
 
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket.getFieldJson().getString("authorization"))));
-            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
+            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
+            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
 
             String url = BASIC_URL + "/file/batchMove";
 
@@ -492,9 +486,6 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             }
 
             taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
-
-            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(fromPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
-            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(toPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
 
         } else {
             //夸桶操作
@@ -517,8 +508,8 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
 
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket.getFieldJson().getString("authorization"))));
-            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
+            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
+            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
 
             String url = BASIC_URL + "/file/batchCopy";
 
@@ -537,8 +528,6 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             }
 
             taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
-
-            cleanCache(fromFileBucket.getFieldJson().getString("authorization"), queryId(Paths.get(toPath).getParent().toString(), fromFileBucket.getFieldJson().getString("authorization")));
 
         } else {
             //夸桶操作
@@ -629,7 +618,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         }
     }
 
-    private String queryId(String uri, String authorization) {
+    private String queryId(String uri, FileBucket fileBucket) {
         uri = PathUtils.toLinuxPath(Paths.get(uri));
 
         if (uri.equals("/")) {
@@ -642,15 +631,23 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         List<FileResource> fileResourceList = new ArrayList<>();
 
+        List<String> pathList = new ArrayList<>();
+        pathList.add(fileBucket.getPath());
+
         for (int i = 0; i < paths.length - 1; i++) {
             if (i == 0) {
-                fileResourceList = list("/", authorization);
+                fileResourceList = list("/", fileBucket.getFieldJson().getString("authorization"));
                 continue;
             }
 
+            pathList.add(paths[i]);
+
             for (FileResource fileResource : fileResourceList) {
                 if (fileResource.getName().equals(paths[i])) {
-                    fileResourceList = list(fileResource.getId(), authorization);
+                    fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));
+
+                    fileTreeCacheService.addChildren(String.join(",", pathList), fileResourceList);
+
                     break;
                 }
             }
@@ -664,30 +661,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         return "";
     }
 
-    private void cleanCache(String authorization, String id) {
-        Cache cache = cacheManager.getCache("fileResourceMap");
-        Map<String, List<FileResource>> map = cache.get("chinaMobileCloudAdapter:" + authorization, Map.class);
-        if (map != null) {
-            map.remove(id);
-        }
-    }
-
     private List<FileResource> list(String id, String authorization) {
-
-
-        Cache cache = cacheManager.getCache("fileResourceMap");
-
-        Map<String, List<FileResource>> map = cache.get("chinaMobileCloudAdapter:" + authorization, Map.class);
-
-        if (map == null) {
-            map = new HashMap<>();
-        }
-
-        List<FileResource> list = map.get(id);
-
-        if (list != null && !list.isEmpty()) {
-            return new ArrayList<>(list);
-        }
 
         String url = BASIC_URL + "/file/list";
 
@@ -730,9 +704,6 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
                 fileResourceList.add(fileResource);
             }
-
-            map.put(id, new ArrayList<>(fileResourceList));
-            cache.put("chinaMobileCloudAdapter:" + authorization, map);
 
             return fileResourceList;
         } else {
