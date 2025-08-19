@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
-public class FileTreeCacheService {
+public class FilePathCacheService {
 
     @Autowired
     private CacheManager cacheManager;

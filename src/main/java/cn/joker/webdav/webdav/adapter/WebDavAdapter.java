@@ -1,6 +1,7 @@
 package cn.joker.webdav.webdav.adapter;
 
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
@@ -14,15 +15,12 @@ import com.github.sardine.SardineFactory;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @AdapterComponent(title = "WebDav")
 public class WebDavAdapter implements IFileAdapter {
@@ -50,7 +48,7 @@ public class WebDavAdapter implements IFileAdapter {
     private String password;
 
     @Autowired
-    private CacheManager cacheManager;
+    private FilePathCacheService filePathCacheService;
 
     private Sardine getSardine(FileBucket fileBucket) {
         JSONObject jsonObject = fileBucket.getFieldJson();
@@ -66,10 +64,23 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
-        Sardine sardine = getSardine(fileBucket);
         try {
-            List<DavResource> resources = sardine.list(fileBucket.getFieldJson().getString("davUrl") + path, 0);
-            return resources != null && !resources.isEmpty();
+            List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + path);
+
+            if (list != null && !list.isEmpty()) {
+                return true;
+            }
+
+            list = propFind(fileBucket, path, false);
+
+            if (list == null || list.isEmpty()) {
+                return false;
+            }
+
+            filePathCacheService.put(fileBucket.getPath() + path, list);
+
+            return true;
+
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -83,14 +94,6 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
-        Cache cache = cacheManager.getCache("fileResourceMap");
-
-        Map<String, List<FileResource>> map = cache.get("webDavAdapter:" + fileBucket.getPath(), Map.class);
-
-        if (map == null) {
-            map = new HashMap<>();
-        }
-
 
         Sardine sardine = getSardine(fileBucket);
         List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + uri);
@@ -99,7 +102,7 @@ public class WebDavAdapter implements IFileAdapter {
 
         davResourceList.forEach(davResource -> {
 
-            if (davResource.getHref().getPath().equals("/") || davResource.getHref().getPath().equals(uri + "/")){
+            if (davResource.getHref().getPath().equals("/") || davResource.getHref().getPath().equals(uri + "/")) {
                 return;
             }
 

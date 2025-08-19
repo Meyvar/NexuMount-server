@@ -1,7 +1,7 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
-import cn.joker.webdav.cache.FileTreeCacheService;
+import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.config.ExternalConfig;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
@@ -37,7 +37,7 @@ public class AdapterManager {
 
     private CacheManager cacheManager;
 
-    FileTreeCacheService fileTreeCacheService;
+    FilePathCacheService filePathCacheService;
 
     @Getter
     private IFileAdapter adapter;
@@ -58,7 +58,7 @@ public class AdapterManager {
         }
         uri = this.userPath + uri;
         cacheManager = SprintContextUtil.getApplicationContext().getBean("cacheManager", CacheManager.class);
-        fileTreeCacheService = SprintContextUtil.getApplicationContext().getBean("fileTreeCacheService", FileTreeCacheService.class);
+        filePathCacheService = SprintContextUtil.getApplicationContext().getBean("filePathCacheService", FilePathCacheService.class);
 
         if ("/".equals(uri)) {
             fileBucket = (FileBucket) cacheManager.getCache("fileBucketList").get(uri).get();
@@ -175,10 +175,10 @@ public class AdapterManager {
         }
 
         if (refresh) {
-            fileTreeCacheService.remove(fileBucket.getPath() + uri);
+            filePathCacheService.remove(fileBucket.getPath() + uri);
         }
 
-        List<FileResource> list = fileTreeCacheService.get(fileBucket.getPath() + uri);
+        List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + uri);
 
         if (list != null && !list.isEmpty() && StringUtils.hasText(list.getFirst().getHref())) {
             for (FileResource resource : list) {
@@ -246,7 +246,7 @@ public class AdapterManager {
             }
         });
 
-        fileTreeCacheService.put(fileBucket.getPath() + uri, list);
+        filePathCacheService.put(fileBucket.getPath() + uri, list);
 
         for (FileResource resource : list) {
             resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
@@ -276,7 +276,7 @@ public class AdapterManager {
     public void mkcol() throws IOException {
         adapter.mkcol(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
         String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
     }
 
     public RequestStatus delete() throws IOException {
@@ -291,7 +291,7 @@ public class AdapterManager {
         adapter.delete(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
 
         String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-        fileTreeCacheService.remove(Paths.get(path).getParent().toString());
+        filePathCacheService.remove(Paths.get(path).getParent().toString());
         return status;
     }
 
@@ -334,7 +334,7 @@ public class AdapterManager {
             throw e;
         } finally {
             String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-            fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+            filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
             Paths.get(filePath).toFile().delete();
         }
 
@@ -364,9 +364,9 @@ public class AdapterManager {
         adapter.move(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
 
         String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
         path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
-        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
 
         status.setCode(HttpServletResponse.SC_CREATED);
@@ -392,9 +392,9 @@ public class AdapterManager {
         adapter.copy(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
 
         String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
         path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
-        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);

@@ -7,7 +7,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.business.service.ISysSettingService;
-import cn.joker.webdav.cache.FileTreeCacheService;
+import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.TaskMeta;
 import cn.joker.webdav.fileTask.UploadHook;
@@ -40,7 +40,7 @@ import java.util.*;
 public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Autowired
-    private FileTreeCacheService fileTreeCacheService;
+    private FilePathCacheService filePathCacheService;
 
     @Autowired
     private TaskManager taskManager;
@@ -60,7 +60,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (path.equals("/")) {
             return true;
         } else {
-            List<FileResource> list = fileTreeCacheService.get(fileBucket.getPath() + path);
+            List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + path);
 
             if (list != null) {
                 return true;
@@ -636,10 +636,10 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         for (int i = 0; i < paths.length - 1; i++) {
             if (i == 0) {
-                fileResourceList = fileTreeCacheService.get(fileBucket.getPath());
+                fileResourceList = filePathCacheService.get(fileBucket.getPath());
                 if (fileResourceList == null || fileResourceList.isEmpty()) {
                     fileResourceList = list("/", fileBucket.getFieldJson().getString("authorization"));
-                    fileTreeCacheService.put(fileBucket.getPath(), fileResourceList);
+                    filePathCacheService.put(fileBucket.getPath(), fileResourceList);
                 }
                 continue;
             }
@@ -648,11 +648,11 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 if (fileResource.getName().equals(paths[i])) {
                     pathList.add(paths[i]);
 
-                    fileResourceList = fileTreeCacheService.get(String.join(",", pathList));
+                    fileResourceList = filePathCacheService.get(String.join(",", pathList));
 
                     if (fileResourceList == null || fileResourceList.isEmpty()) {
                         fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));
-                        fileTreeCacheService.put(String.join("/", pathList), fileResourceList);
+                        filePathCacheService.put(String.join("/", pathList), fileResourceList);
                     }
 
                     break;
