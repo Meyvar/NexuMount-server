@@ -60,9 +60,9 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (path.equals("/")) {
             return true;
         } else {
-            FileResource fileResource = fileTreeCacheService.getNode(fileBucket.getPath() + path);
+            List<FileResource> list = fileTreeCacheService.get(fileBucket.getPath() + path);
 
-            if (fileResource != null) {
+            if (list != null) {
                 return true;
             }
 
@@ -636,17 +636,24 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         for (int i = 0; i < paths.length - 1; i++) {
             if (i == 0) {
-                fileResourceList = list("/", fileBucket.getFieldJson().getString("authorization"));
+                fileResourceList = fileTreeCacheService.get(fileBucket.getPath());
+                if (fileResourceList == null || fileResourceList.isEmpty()) {
+                    fileResourceList = list("/", fileBucket.getFieldJson().getString("authorization"));
+                    fileTreeCacheService.put(fileBucket.getPath(), fileResourceList);
+                }
                 continue;
             }
 
-            pathList.add(paths[i]);
-
             for (FileResource fileResource : fileResourceList) {
                 if (fileResource.getName().equals(paths[i])) {
-                    fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));
+                    pathList.add(paths[i]);
 
-                    fileTreeCacheService.addChildren(String.join(",", pathList), fileResourceList);
+                    fileResourceList = fileTreeCacheService.get(String.join(",", pathList));
+
+                    if (fileResourceList == null || fileResourceList.isEmpty()) {
+                        fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));
+                        fileTreeCacheService.put(String.join("/", pathList), fileResourceList);
+                    }
 
                     break;
                 }

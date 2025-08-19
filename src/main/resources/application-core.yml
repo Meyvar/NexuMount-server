@@ -8,7 +8,7 @@ spring:
     type: caffeine
     cache-names:
       - fileBucketList
-      - fileTreeCache
+      - filePathCache
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:

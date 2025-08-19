@@ -175,12 +175,12 @@ public class AdapterManager {
         }
 
         if (refresh) {
-            fileTreeCacheService.removeChild(fileBucket.getPath() + uri);
+            fileTreeCacheService.remove(fileBucket.getPath() + uri);
         }
 
-        List<FileResource> list = fileTreeCacheService.getChildren(fileBucket.getPath() + uri);
+        List<FileResource> list = fileTreeCacheService.get(fileBucket.getPath() + uri);
 
-        if (list != null && !list.isEmpty()) {
+        if (list != null && !list.isEmpty() && StringUtils.hasText(list.getFirst().getHref())) {
             for (FileResource resource : list) {
                 resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
             }
@@ -246,7 +246,7 @@ public class AdapterManager {
             }
         });
 
-        fileTreeCacheService.addChildren(fileBucket.getPath() + uri, list);
+        fileTreeCacheService.put(fileBucket.getPath() + uri, list);
 
         for (FileResource resource : list) {
             resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
@@ -275,6 +275,8 @@ public class AdapterManager {
 
     public void mkcol() throws IOException {
         adapter.mkcol(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
+        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
     }
 
     public RequestStatus delete() throws IOException {
@@ -287,6 +289,9 @@ public class AdapterManager {
             status.setSuccess(true);
         }
         adapter.delete(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
+
+        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        fileTreeCacheService.remove(Paths.get(path).getParent().toString());
         return status;
     }
 
@@ -328,6 +333,8 @@ public class AdapterManager {
         } catch (Exception e) {
             throw e;
         } finally {
+            String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+            fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
             Paths.get(filePath).toFile().delete();
         }
 
@@ -355,6 +362,13 @@ public class AdapterManager {
 
 
         adapter.move(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
+
+        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
+        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+
+
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
@@ -376,6 +390,12 @@ public class AdapterManager {
         }
 
         adapter.copy(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
+
+        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
+        fileTreeCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
+
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
