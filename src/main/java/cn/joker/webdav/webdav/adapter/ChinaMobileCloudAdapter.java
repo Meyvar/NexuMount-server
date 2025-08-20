@@ -66,23 +66,14 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 return true;
             }
 
-            String filePath = path;
-            if (!fileBucket.getSourcePath().equals("/")) {
-                filePath = fileBucket.getSourcePath() + path;
-            }
-
-            return StringUtils.hasText(queryId(filePath, fileBucket));
+            return StringUtils.hasText(queryId(path, fileBucket));
         }
     }
 
     @Override
     public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
-        String path = uri;
-        if (!fileBucket.getSourcePath().equals("/")) {
-            path = fileBucket.getSourcePath() + path;
-        }
 
-        Path pathObj = Paths.get(path);
+        Path pathObj = Paths.get(uri);
         String parent = PathUtils.toLinuxPath(pathObj.getParent());
 
         String id = "";
@@ -116,33 +107,19 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
-        String path = uri;
-        if (!fileBucket.getSourcePath().equals("/")) {
-            path = fileBucket.getSourcePath() + path;
-        }
 
         String id = "/";
 
-        if (!path.equals("/")) {
-            id = queryId(path, fileBucket);
+        if (!uri.equals("/")) {
+            id = queryId(uri, fileBucket);
         }
 
-        List<FileResource> list = list(id, fileBucket.getFieldJson().getString("authorization"));
-
-
-        for (FileResource fileResource : list) {
-            if (!uri.endsWith("/")) {
-                uri += "/";
-            }
-            fileResource.setHref(fileBucket.getPath() + uri + fileResource.getName());
-        }
-
-        return list;
+        return list(id, fileBucket.getFieldJson().getString("authorization"));
     }
 
     @Override
     public void get(FileBucket fileBucket, String path) throws Exception {
-        String downloadUrl = getDownloadUrl(fileBucket, path);
+        String downloadUrl = getDownloadUrl(fileBucket, path, null);
         RequestHolder.getResponse().sendRedirect(downloadUrl);
     }
 
@@ -540,7 +517,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path) throws IOException {
+    public String getDownloadUrl(FileBucket fileBucket, String path, Map<String, String> header) throws IOException {
 
         JSONObject jsonObject = new JSONObject();
 
@@ -611,7 +588,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
             if (!jsonObject.getBoolean("success")) {
                 return jsonObject.getString("message");
             } else {
-                return "work";
+                return "working";
             }
         } else {
             return "status is:" + response.getStatus();
@@ -633,6 +610,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
         List<String> pathList = new ArrayList<>();
         pathList.add(fileBucket.getPath());
+        pathList.add(fileBucket.getSourcePath());
 
         for (int i = 0; i < paths.length - 1; i++) {
             if (i == 0) {
@@ -648,7 +626,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 if (fileResource.getName().equals(paths[i])) {
                     pathList.add(paths[i]);
 
-                    fileResourceList = filePathCacheService.get(String.join("/", pathList));
+                    fileResourceList = filePathCacheService.get(PathUtils.normalizePath(String.join("/", pathList)));
 
                     if (fileResourceList == null || fileResourceList.isEmpty()) {
                         fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));

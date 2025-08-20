@@ -1,8 +1,14 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.entity.SysSetting;
+import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.cache.FilePathCacheService;
+import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.UploadHook;
+import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
@@ -19,6 +25,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
+import okhttp3.*;
+import org.apache.catalina.connector.ClientAbortException;
 import org.apache.http.message.BasicHttpResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -28,9 +36,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @AdapterComponent(title = "WebDav")
 public class WebDavAdapter implements IFileAdapter {
@@ -60,9 +71,15 @@ public class WebDavAdapter implements IFileAdapter {
     @Autowired
     private FilePathCacheService filePathCacheService;
 
+    @Autowired
+    private ISysSettingService sysSettingService;
+
+    @Autowired
+    private TaskManager taskManager;
+
     private Sardine getSardine(FileBucket fileBucket) {
         JSONObject jsonObject = fileBucket.getFieldJson();
-        String url = jsonObject.getString("url") + ":" + jsonObject.getString("prot") + fileBucket.getSourcePath();
+        String url = jsonObject.getString("url") + ":" + jsonObject.getString("prot");
         if (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
@@ -92,7 +109,7 @@ public class WebDavAdapter implements IFileAdapter {
     @Override
     public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
         Path path = Paths.get(PathUtils.normalizePath(fileBucket.getPath() + uri));
-        List<FileResource> list = filePathCacheService.get(path.getParent().toString());
+        List<FileResource> list = filePathCacheService.get(PathUtils.toLinuxPath(path.getParent()));
         if (list != null && !list.isEmpty()) {
             String name = path.getFileName().toString();
             for (FileResource resource : list) {
@@ -103,7 +120,7 @@ public class WebDavAdapter implements IFileAdapter {
         }
 
         path = Paths.get(uri);
-        list = propFind(fileBucket, path.getParent().toString(), false);
+        list = propFind(fileBucket, PathUtils.toLinuxPath(path.getParent()), false);
 
         for (FileResource resource : list) {
             if (resource.getName().equals(path.getFileName().toString())) {
@@ -122,19 +139,29 @@ public class WebDavAdapter implements IFileAdapter {
             return list;
         }
 
+
+        String ePath = Arrays.stream(uri.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
+
         Sardine sardine = getSardine(fileBucket);
-        List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + uri);
+        List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + ePath);
 
         davResourceList.forEach(davResource -> {
 
-            if (davResource.getHref().getPath().equals("/") || davResource.getHref().getPath().equals(uri + "/")) {
+            String path = davResource.getHref().getPath();
+
+            path = path.replaceFirst(fileBucket.getSourcePath(), "/");
+
+            path = PathUtils.normalizePath(fileBucket.getSourcePath() + path);
+
+            if (path.equals("/") || path.equals(uri)) {
                 return;
             }
 
             FileResource fileResource = new FileResource();
             fileResource.setName(davResource.getName());
             fileResource.setContentType(davResource.getContentType());
-            fileResource.setHref(PathUtils.normalizePath(fileBucket.getPath() + davResource.getHref().getPath()));
             fileResource.setType(davResource.isDirectory() ? "folder" : "file");
             fileResource.setSize(davResource.getContentLength());
             fileResource.setDate(davResource.getModified());
@@ -150,26 +177,49 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public void get(FileBucket fileBucket, String path) throws Exception {
-        String url = fileBucket.getFieldJson().getString("davUrl") + path;
+        Map<String, String> headerMap = new HashMap<>();
+        String url = getDownloadUrl(fileBucket, path, headerMap);
         HttpServletRequest request = RequestHolder.getRequest();
 
-        Map<String, String> headers = new HashMap<>();
-
         if (request != null && StringUtils.hasText(request.getHeader("range"))) {
-            headers.put("Range", request.getHeader("range"));
+            headerMap.put("Range", request.getHeader("range"));
         }
-
-        Sardine sardine = getSardine(fileBucket);
-        InputStream in = sardine.get(url, headers);
-
 
         HttpServletResponse response = RequestHolder.getResponse();
 
-        OutputStream out = response.getOutputStream();
+        Headers headers = Headers.of(headerMap);
 
+        Request httpRequest = new Request.Builder()
+                .headers(headers)
+                .url(url)
+                .build();
 
+        OkHttpClient client = new OkHttpClient();
+        Response httpResponse = client.newCall(httpRequest).execute();
 
-        in.transferTo(out);
+        if (!httpResponse.isSuccessful()) {
+            throw new IOException("Unexpected code " + response);
+        }
+
+        response.setStatus(httpResponse.code());
+
+        response.setHeader("Content-Type", httpResponse.header("Content-Type"));
+        if (httpResponse.header("Content-Range") != null) {
+            response.setHeader("Content-Range", httpResponse.header("Content-Range"));
+        }
+        response.setHeader("Accept-Ranges", "bytes");
+        if (httpResponse.header("Content-Length") != null) {
+            response.setHeader("Content-Length", httpResponse.header("Content-Length"));
+        }
+
+        ResponseBody body = httpResponse.body();
+
+        InputStream in = body.byteStream();
+        try {
+            in.transferTo(response.getOutputStream());
+        } catch (ClientAbortException clientAbortException) {
+            in.close();
+        }
     }
 
     @Override
@@ -179,31 +229,101 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public void delete(FileBucket fileBucket, String path) throws IOException {
+        path = Arrays.stream(path.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
+        String url = fileBucket.getFieldJson().getString("davUrl") + path;
+
+        Sardine sardine = getSardine(fileBucket);
+        sardine.delete(url);
     }
 
     @Override
     public void mkcol(FileBucket fileBucket, String path) throws IOException {
+        path = Arrays.stream(path.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
+        String url = fileBucket.getFieldJson().getString("davUrl") + path;
+
+        Sardine sardine = getSardine(fileBucket);
+        sardine.createDirectory(url);
     }
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            fromPath = Arrays.stream(fromPath.split("/"))
+                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                    .collect(Collectors.joining("/"));
 
+            String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
+
+            toPath = Arrays.stream(toPath.split("/"))
+                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                    .collect(Collectors.joining("/"));
+
+            Sardine sardine = getSardine(fromFileBucket);
+            sardine.move(url, toPath);
+        } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+
+            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
+        }
     }
 
     @Override
     public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+            fromPath = Arrays.stream(fromPath.split("/"))
+                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                    .collect(Collectors.joining("/"));
 
+            String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
+
+            toPath = Arrays.stream(toPath.split("/"))
+                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                    .collect(Collectors.joining("/"));
+
+            Sardine sardine = getSardine(fromFileBucket);
+            sardine.copy(url, toPath);
+        } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+
+            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+        }
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path) throws IOException {
-        return "";
+    public String getDownloadUrl(FileBucket fileBucket, String path, Map<String, String> header) throws IOException {
+        String authBase64 = Base64.getEncoder()
+                .encodeToString((fileBucket.getFieldJson().getString("username") + ":" + fileBucket.getFieldJson().getString("password")).getBytes(StandardCharsets.UTF_8));
+        authBase64 = "Basic " + authBase64;
+        header.put("Authorization", authBase64);
+
+        path = PathUtils.normalizePath(path);
+
+        path = Arrays.stream(path.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
+
+        return fileBucket.getFieldJson().getString("davUrl") + path;
     }
 
     @Override
     public String workStatus(FileBucket fileBucket) {
-        return "";
+        Sardine sardine = getSardine(fileBucket);
+        try {
+            sardine.list(fileBucket.getFieldJson().getString("davUrl") + fileBucket.getSourcePath());
+            return "working";
+        } catch (IOException e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
     }
 }

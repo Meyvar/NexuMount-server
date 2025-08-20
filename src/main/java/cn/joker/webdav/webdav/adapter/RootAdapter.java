@@ -104,7 +104,7 @@ public class RootAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path) {
+    public String getDownloadUrl(FileBucket fileBucket, String path, Map<String, String> header) {
         return "";
     }
 

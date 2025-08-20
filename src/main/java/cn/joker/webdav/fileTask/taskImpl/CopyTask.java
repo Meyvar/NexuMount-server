@@ -9,10 +9,7 @@ import cn.joker.webdav.webdav.adapter.SystemFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
 import kotlin.time.TimeMark;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import okhttp3.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class CopyTask extends FileTransferTask {
@@ -47,12 +46,10 @@ public class CopyTask extends FileTransferTask {
         IFileAdapter fromAdapter = SprintContextUtil.getBean(fromBucket.getAdapter(), IFileAdapter.class);
         IFileAdapter toAdapter = SprintContextUtil.getBean(toBucket.getAdapter(), IFileAdapter.class);
 
-        String path = PathUtils.normalizePath("/" + fromPath.replaceFirst(fromBucket.getSourcePath(), ""));
-
-        if (fromAdapter.getFolderItself(fromBucket, path).getType().equals("folder")) {
+        if (fromAdapter.getFolderItself(fromBucket, fromPath).getType().equals("folder")) {
             toAdapter.mkcol(toBucket, toPath);
 
-            List<FileResource> fileResourceList = fromAdapter.propFind(fromBucket, path, true);
+            List<FileResource> fileResourceList = fromAdapter.propFind(fromBucket, fromPath, true);
             for (FileResource fileResource : fileResourceList) {
 
                 String uuid = UUID.randomUUID().toString().replace("-", "");
@@ -69,11 +66,17 @@ public class CopyTask extends FileTransferTask {
             if (fromAdapter instanceof SystemFileAdapter) {
                 Files.copy(Paths.get(fromPath), targetPath, StandardCopyOption.REPLACE_EXISTING);
             } else {
-                String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, Paths.get(fromPath).toString());
+                Map<String, String> headerMap = new HashMap<>();
+
+                String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, PathUtils.toLinuxPath(Paths.get(fromPath)), headerMap);
+
+                Headers headers = Headers.of(headerMap);
 
                 Request request = new Request.Builder()
+                        .headers(headers)
                         .url(downloadUrl)
                         .build();
+
 
                 OkHttpClient client = new OkHttpClient();
                 Response response = client.newCall(request).execute();
@@ -122,7 +125,6 @@ public class CopyTask extends FileTransferTask {
                             released = false; // 重置
                         }
                     }
-
 
 
                     //任务取消

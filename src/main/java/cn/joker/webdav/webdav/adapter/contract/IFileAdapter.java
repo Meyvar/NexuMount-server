@@ -96,7 +96,7 @@ public interface IFileAdapter {
      * @param path
      * @return
      */
-    String getDownloadUrl(FileBucket fileBucket, String path) throws IOException;
+    String getDownloadUrl(FileBucket fileBucket, String path, Map<String, String> header) throws IOException;
 
 
     /**

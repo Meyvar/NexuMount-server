@@ -191,7 +191,7 @@ public class ApiServiceImpl implements IApiService {
 
         RequestParam toParam = new RequestParam();;
         Path path = Paths.get(param.getPath());
-        toParam.setPath(destPathRaw + path.getFileName());
+        toParam.setPath(destPathRaw);
 
         AdapterManager toAdapterManager = getAdapterManager(toParam);
 

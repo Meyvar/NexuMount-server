@@ -144,13 +144,15 @@ public class AdapterManager {
         }
 
         if (fileResource.getDate() == null) {
-            fileResource = adapter.getFolderItself(fileBucket, uri);
+            fileResource = adapter.getFolderItself(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
         } else {
             if (!StringUtils.hasText(fileResource.getHref())) {
                 fileResource.setHref("/");
             }
         }
-        fileResource.setHref(fileResource.getHref().replaceFirst(this.userPath, ""));
+
+        String href = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        fileResource.setHref(href.replaceFirst(this.userPath, ""));
         return fileResource;
     }
 
@@ -175,21 +177,22 @@ public class AdapterManager {
         }
 
         if (refresh) {
-            filePathCacheService.remove(fileBucket.getPath() + uri);
+            filePathCacheService.remove(PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri));
         }
 
-        List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + uri);
+        List<FileResource> list = filePathCacheService.get(PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri));
 
         if (list != null && !list.isEmpty() && StringUtils.hasText(list.getFirst().getHref())) {
             for (FileResource resource : list) {
-                resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
+                String href = PathUtils.normalizePath(fileBucket.getPath() + uri + "/" + resource.getName());
+                resource.setHref(href.replaceFirst(this.userPath, ""));
             }
 
             status.setFileResources(list);
             return status;
         }
 
-        list = adapter.propFind(fileBucket, uri, refresh);
+        list = adapter.propFind(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), refresh);
 
         for (FileBucket bucket : fileBucketList) {
             FileResource resource = new FileResource();
@@ -246,10 +249,11 @@ public class AdapterManager {
             }
         });
 
-        filePathCacheService.put(fileBucket.getPath() + uri, list);
+        filePathCacheService.put(PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri), list);
 
         for (FileResource resource : list) {
-            resource.setHref(resource.getHref().replaceFirst(this.userPath, ""));
+            String href = PathUtils.normalizePath(fileBucket.getPath() + uri + "/" + resource.getName());
+            resource.setHref(href.replaceFirst(this.userPath, ""));
         }
 
         status.setFileResources(list);
@@ -261,7 +265,7 @@ public class AdapterManager {
     }
 
     public boolean hasPath() {
-        boolean has = adapter.hasPath(fileBucket, uri);
+        boolean has = adapter.hasPath(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
         if (!has) {
             for (FileBucket bucket : fileBucketList) {
                 if (bucket.getPath().startsWith(uri)) {
@@ -275,7 +279,7 @@ public class AdapterManager {
 
     public void mkcol() throws IOException {
         adapter.mkcol(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
-        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        String path = PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
     }
 
@@ -290,7 +294,7 @@ public class AdapterManager {
         }
         adapter.delete(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri));
 
-        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        String path = PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(Paths.get(path).getParent().toString());
         return status;
     }
@@ -333,7 +337,7 @@ public class AdapterManager {
         } catch (Exception e) {
             throw e;
         } finally {
-            String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+            String path = PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri);
             filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
             Paths.get(filePath).toFile().delete();
         }
@@ -363,9 +367,9 @@ public class AdapterManager {
 
         adapter.move(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
 
-        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        String path = PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
-        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
+        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
 
@@ -391,19 +395,13 @@ public class AdapterManager {
 
         adapter.copy(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
 
-        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
+        String path = PathUtils.normalizePath(fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
-        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + destPathRaw);
+        path = PathUtils.normalizePath(toAdapterManager.fileBucket.getPath() + toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
         status.setCode(HttpServletResponse.SC_CREATED);
         status.setSuccess(true);
         return status;
-    }
-
-    public String getDownloadUrl() throws IOException {
-        String path = PathUtils.normalizePath(fileBucket.getPath() + uri);
-        path = path.replaceFirst(this.userPath, "");
-        return adapter.getDownloadUrl(fileBucket, path);
     }
 }

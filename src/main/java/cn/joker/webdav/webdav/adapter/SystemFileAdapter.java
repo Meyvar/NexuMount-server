@@ -43,14 +43,13 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
-        String filePath = fileBucket.getSourcePath() + path;
-        File file = new File(filePath);
+        File file = new File(path);
         return file.exists();
     }
 
     @Override
     public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
-        File file = new File(fileBucket.getSourcePath() + uri);
+        File file = new File(uri);
         FileResource fileResource = new FileResource();
 
         if (file.isDirectory()) {
@@ -91,7 +90,7 @@ public class SystemFileAdapter implements IFileAdapter {
         if (!uri.endsWith("/")) {
             uri += "/";
         }
-        Path filePath = Path.of(fileBucket.getSourcePath() + uri);
+        Path filePath = Path.of(uri);
 
         File file = filePath.toFile();
         File[] files = file.isDirectory() ? file.listFiles() : new File[0];
@@ -120,8 +119,6 @@ public class SystemFileAdapter implements IFileAdapter {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-
-                ressource.setHref(fileBucket.getPath() + uri + f.getName());
                 list.add(ressource);
             }
         }
@@ -305,12 +302,12 @@ public class SystemFileAdapter implements IFileAdapter {
     }
 
     @Override
-    public String getDownloadUrl(FileBucket fileBucket, String path) {
+    public String getDownloadUrl(FileBucket fileBucket, String path, Map<String, String> header) {
         return "/api/pub/dav/load.do?path=" + path + "&token=" + StpUtil.getTokenValue();
     }
 
     @Override
     public String workStatus(FileBucket fileBucket) {
-        return "work";
+        return "working";
     }
 }

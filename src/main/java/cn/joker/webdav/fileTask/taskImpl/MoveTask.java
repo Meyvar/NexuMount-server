@@ -20,7 +20,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class MoveTask extends FileTransferTask {
@@ -46,12 +48,11 @@ public class MoveTask extends FileTransferTask {
         IFileAdapter fromAdapter = SprintContextUtil.getBean(fromBucket.getAdapter(), IFileAdapter.class);
         IFileAdapter toAdapter = SprintContextUtil.getBean(toBucket.getAdapter(), IFileAdapter.class);
 
-        String path = PathUtils.normalizePath("/" + fromPath.replaceFirst(fromBucket.getSourcePath(), ""));
 
-        if (fromAdapter.getFolderItself(fromBucket, path).getType().equals("folder")) {
+        if (fromAdapter.getFolderItself(fromBucket, fromPath).getType().equals("folder")) {
             toAdapter.mkcol(toBucket, toPath);
 
-            List<FileResource> fileResourceList = fromAdapter.propFind(fromBucket, path, true);
+            List<FileResource> fileResourceList = fromAdapter.propFind(fromBucket, fromPath, true);
             for (FileResource fileResource : fileResourceList) {
 
                 String uuid = UUID.randomUUID().toString().replace("-", "");
@@ -69,7 +70,8 @@ public class MoveTask extends FileTransferTask {
             if (fromAdapter instanceof SystemFileAdapter) {
                 Files.copy(Paths.get(fromPath), targetPath, StandardCopyOption.REPLACE_EXISTING);
             } else {
-                String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, Paths.get(fromPath).toString());
+                Map<String, String> headerMap = new HashMap<>();
+                String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, Paths.get(fromPath).toString(), headerMap);
 
                 Request request = new Request.Builder()
                         .url(downloadUrl)
