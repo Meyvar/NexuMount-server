@@ -4,6 +4,7 @@ import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.utils.PathUtils;
+import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
@@ -12,15 +13,24 @@ import com.alibaba.fastjson2.JSONObject;
 import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
+import com.github.sardine.impl.io.ContentLengthInputStream;
+import com.github.sardine.impl.io.HttpMethodReleaseInputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.http.message.BasicHttpResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.nio.file.Paths;
+import java.util.*;
 
 @AdapterComponent(title = "WebDav")
 public class WebDavAdapter implements IFileAdapter {
@@ -65,20 +75,12 @@ public class WebDavAdapter implements IFileAdapter {
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
         try {
-            List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + path);
 
-            if (list != null && !list.isEmpty()) {
-                return true;
-            }
-
-            list = propFind(fileBucket, path, false);
+            List<FileResource> list = propFind(fileBucket, path, false);
 
             if (list == null || list.isEmpty()) {
                 return false;
             }
-
-            filePathCacheService.put(fileBucket.getPath() + path, list);
-
             return true;
 
         } catch (IOException e) {
@@ -89,16 +91,39 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
+        Path path = Paths.get(PathUtils.normalizePath(fileBucket.getPath() + uri));
+        List<FileResource> list = filePathCacheService.get(path.getParent().toString());
+        if (list != null && !list.isEmpty()) {
+            String name = path.getFileName().toString();
+            for (FileResource resource : list) {
+                if (name.equals(resource.getName())) {
+                    return resource;
+                }
+            }
+        }
+
+        path = Paths.get(uri);
+        list = propFind(fileBucket, path.getParent().toString(), false);
+
+        for (FileResource resource : list) {
+            if (resource.getName().equals(path.getFileName().toString())) {
+                return resource;
+            }
+        }
         return null;
     }
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
 
+        List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + uri);
+
+        if (list != null && !list.isEmpty()) {
+            return list;
+        }
+
         Sardine sardine = getSardine(fileBucket);
         List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + uri);
-
-        List<FileResource> list = new ArrayList<>();
 
         davResourceList.forEach(davResource -> {
 
@@ -117,12 +142,34 @@ public class WebDavAdapter implements IFileAdapter {
             list.add(fileResource);
         });
 
+        filePathCacheService.put(fileBucket.getPath() + uri, list);
+
+
         return list;
     }
 
     @Override
     public void get(FileBucket fileBucket, String path) throws Exception {
+        String url = fileBucket.getFieldJson().getString("davUrl") + path;
+        HttpServletRequest request = RequestHolder.getRequest();
 
+        Map<String, String> headers = new HashMap<>();
+
+        if (request != null && StringUtils.hasText(request.getHeader("range"))) {
+            headers.put("Range", request.getHeader("range"));
+        }
+
+        Sardine sardine = getSardine(fileBucket);
+        InputStream in = sardine.get(url, headers);
+
+
+        HttpServletResponse response = RequestHolder.getResponse();
+
+        OutputStream out = response.getOutputStream();
+
+
+
+        in.transferTo(out);
     }
 
     @Override

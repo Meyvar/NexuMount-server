@@ -648,7 +648,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                 if (fileResource.getName().equals(paths[i])) {
                     pathList.add(paths[i]);
 
-                    fileResourceList = filePathCacheService.get(String.join(",", pathList));
+                    fileResourceList = filePathCacheService.get(String.join("/", pathList));
 
                     if (fileResourceList == null || fileResourceList.isEmpty()) {
                         fileResourceList = list(fileResource.getId(), fileBucket.getFieldJson().getString("authorization"));
