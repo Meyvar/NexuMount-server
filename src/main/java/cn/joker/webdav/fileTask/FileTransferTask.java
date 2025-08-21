@@ -41,6 +41,21 @@ public abstract class FileTransferTask implements Runnable {
 
         try {
 
+            if (tm.isPaused(taskId)) {
+                tm.getSemaphore().release(); // 只释放一次
+
+                pauseLock.lock();
+                try {
+                    while (tm.isPaused(taskId)) {
+                        unpaused.await(); // 挂起虚拟线程
+                    }
+                } finally {
+                    pauseLock.unlock();
+                }
+
+                tm.getSemaphore().acquire(); // 恢复时重新占用名额
+            }
+
             ExternalConfig externalConfig = SprintContextUtil.getBean("externalConfig", ExternalConfig.class);
 
             // 确保父目录存在
