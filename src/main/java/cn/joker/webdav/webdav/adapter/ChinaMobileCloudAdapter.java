@@ -60,7 +60,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         if (path.equals("/")) {
             return true;
         } else {
-            List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + path);
+            List<FileResource> list = filePathCacheService.get(fileBucket.getUuid() + fileBucket.getPath() + path);
 
             if (list != null) {
                 return true;
@@ -609,15 +609,16 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         List<FileResource> fileResourceList = new ArrayList<>();
 
         List<String> pathList = new ArrayList<>();
+        pathList.add(fileBucket.getUuid());
         pathList.add(fileBucket.getPath());
         pathList.add(fileBucket.getSourcePath());
 
         for (int i = 0; i < paths.length - 1; i++) {
             if (i == 0) {
-                fileResourceList = filePathCacheService.get(fileBucket.getPath());
+                fileResourceList = filePathCacheService.get(fileBucket.getUuid() + fileBucket.getPath());
                 if (fileResourceList == null || fileResourceList.isEmpty()) {
                     fileResourceList = list("/", fileBucket.getFieldJson().getString("authorization"));
-                    filePathCacheService.put(fileBucket.getPath(), fileResourceList);
+                    filePathCacheService.put(fileBucket.getUuid() + fileBucket.getPath(), fileResourceList);
                 }
                 continue;
             }

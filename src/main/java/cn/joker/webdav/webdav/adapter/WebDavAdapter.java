@@ -6,6 +6,7 @@ import cn.joker.webdav.business.entity.SysSetting;
 import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.TaskMeta;
 import cn.joker.webdav.fileTask.UploadHook;
 import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.fileTask.taskImpl.MoveTask;
@@ -25,21 +26,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import okhttp3.*;
 import org.apache.catalina.connector.ClientAbortException;
 import org.apache.http.message.BasicHttpResponse;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -95,9 +97,25 @@ public class WebDavAdapter implements IFileAdapter {
 
             List<FileResource> list = propFind(fileBucket, path, false);
 
-            if (list == null || list.isEmpty()) {
+            if (list == null) {
                 return false;
             }
+
+            if (list.isEmpty()) {
+                String ePath = Arrays.stream(path.split("/"))
+                        .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                        .collect(Collectors.joining("/"));
+
+                Sardine sardine = getSardine(fileBucket);
+                List<DavResource> davResourceList = sardine.list(fileBucket.getFieldJson().getString("davUrl") + ePath);
+                if (davResourceList == null || davResourceList.isEmpty()) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
+
             return true;
 
         } catch (IOException e) {
@@ -109,7 +127,7 @@ public class WebDavAdapter implements IFileAdapter {
     @Override
     public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
         Path path = Paths.get(PathUtils.normalizePath(fileBucket.getPath() + uri));
-        List<FileResource> list = filePathCacheService.get(PathUtils.toLinuxPath(path.getParent()));
+        List<FileResource> list = filePathCacheService.get(fileBucket.getUuid() + PathUtils.toLinuxPath(path.getParent()));
         if (list != null && !list.isEmpty()) {
             String name = path.getFileName().toString();
             for (FileResource resource : list) {
@@ -133,7 +151,7 @@ public class WebDavAdapter implements IFileAdapter {
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
 
-        List<FileResource> list = filePathCacheService.get(fileBucket.getPath() + uri);
+        List<FileResource> list = filePathCacheService.get(fileBucket.getUuid() + fileBucket.getPath() + uri);
 
         if (list != null && !list.isEmpty()) {
             return list;
@@ -169,7 +187,7 @@ public class WebDavAdapter implements IFileAdapter {
             list.add(fileResource);
         });
 
-        filePathCacheService.put(fileBucket.getPath() + uri, list);
+        filePathCacheService.put(fileBucket.getUuid() + fileBucket.getPath() + uri, list);
 
 
         return list;
@@ -224,7 +242,13 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception {
+        path = Arrays.stream(path.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
+        String url = fileBucket.getFieldJson().getString("davUrl") + path;
 
+        Sardine sardine = getSardine(fileBucket);
+        sardine.put(url, new UploadInputStream(tempFilePath.toFile(), hook));
     }
 
     @Override
@@ -326,4 +350,83 @@ public class WebDavAdapter implements IFileAdapter {
             return e.getMessage();
         }
     }
+
+
+    class UploadInputStream extends FileInputStream {
+        private UploadHook hook;
+        private TaskMeta meta;
+        private long startTime;
+        private long uploadedBytes = 0;
+        DecimalFormat df = new DecimalFormat("#.##");
+        private long totalBytes;
+
+
+        @SneakyThrows
+        @Override
+        public int read(@NotNull byte[] b) throws IOException {
+            if (hook != null) {
+                hook.pause();
+                if (hook.cancel()) {
+                    return -1;
+                }
+            }
+
+            int bytesRead = super.read(b);
+
+            if (bytesRead > 0) {
+                uploadedBytes += bytesRead;
+                reportProgress();
+            }
+
+            return bytesRead;
+        }
+
+
+        public UploadInputStream(File file, UploadHook hook) throws FileNotFoundException {
+            super(file);
+            this.hook = hook;
+            this.meta = hook.getTaskMeta();
+            this.startTime = System.nanoTime();
+            totalBytes = file.length();
+        }
+
+
+        private long lastReportTime = 0;
+        private long lastUploadedBytes = 0;
+        private long lastReportNs = 0;
+
+        private void reportProgress() {
+            if (meta != null) {
+                long now = System.currentTimeMillis();
+                if (now - lastReportTime < 500) return; // 每 0.5s 回调一次
+                lastReportTime = now;
+
+                // 计算进度百分比
+                double progressPercent = uploadedBytes * 100.0 / totalBytes;
+
+                // 瞬时速度
+                long nowNs = System.nanoTime();
+                if (lastReportNs == 0) {
+                    lastReportNs = nowNs; // 第一次初始化
+                    lastUploadedBytes = uploadedBytes;
+                }
+                long intervalBytes = uploadedBytes - lastUploadedBytes;
+                double intervalSeconds = (nowNs - lastReportNs) / 1_000_000_000.0;
+                double currentSpeedKBps = 0;
+                if (intervalSeconds > 0) {
+                    currentSpeedKBps = intervalBytes / 1024.0 / intervalSeconds;
+                }
+
+                // 更新记录
+                lastUploadedBytes = uploadedBytes;
+                lastReportNs = nowNs;
+
+                meta.setProgress(df.format(progressPercent));
+                meta.setElapsed(df.format(currentSpeedKBps)); // 显示当前速度
+                meta.setTransferredBytes(uploadedBytes);
+            }
+        }
+
+    }
+
 }

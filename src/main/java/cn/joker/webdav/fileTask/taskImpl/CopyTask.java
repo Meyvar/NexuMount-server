@@ -54,7 +54,7 @@ public class CopyTask extends FileTransferTask {
 
                 String uuid = UUID.randomUUID().toString().replace("-", "");
 
-                CopyTask copyTask = new CopyTask(uuid, fromBucket, toBucket, PathUtils.normalizePath(fromBucket.getSourcePath() + fileResource.getHref().replaceFirst(fromBucket.getPath(), "/")), toPath + "/" + fileResource.getName(), taskBufferSize);
+                CopyTask copyTask = new CopyTask(uuid, fromBucket, toBucket, fromPath + "/" + fileResource.getName(), toPath + "/" + fileResource.getName(), taskBufferSize);
 
                 tm.startTask(uuid, copyTask, meta.getUserToken());
             }
