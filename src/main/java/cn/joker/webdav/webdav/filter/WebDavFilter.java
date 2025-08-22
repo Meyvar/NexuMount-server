@@ -1,7 +1,6 @@
 package cn.joker.webdav.webdav.filter;
 
 
-import cn.joker.webdav.business.entity.SysUser;
 import cn.joker.webdav.business.service.ISysUserService;
 import cn.joker.webdav.webdav.service.IWebDavService;
 import jakarta.servlet.FilterChain;
@@ -36,7 +35,12 @@ public class WebDavFilter extends OncePerRequestFilter {
 
         String basic = request.getHeader("Authorization");
 
-        if (StringUtils.hasText(depth) || StringUtils.hasText(basic) || ua.contains("WebDAV")) {
+        if (
+                StringUtils.hasText(depth)
+                        || StringUtils.hasText(basic)
+                        || (StringUtils.hasText(ua) && ua.contains("WebDAV"))
+                        || request.getHeader("cookie").contains("Authorization-Key")
+        ) {
 
             if (!StringUtils.hasText(basic)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
