@@ -4,6 +4,7 @@ import cn.hutool.extra.spring.SpringUtil;
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.config.ExternalConfig;
 import cn.joker.webdav.utils.SprintContextUtil;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 public abstract class FileTransferTask implements Runnable {
 
@@ -77,12 +79,27 @@ public abstract class FileTransferTask implements Runnable {
             }
 
         } catch (Exception e) {
-            meta.setStatus(TaskStatus.ERROR);
-            meta.setError(e.getMessage());
-            e.printStackTrace();
+            if (!e.getMessage().equals("Cancel")) {
+                meta.setStatus(TaskStatus.ERROR);
+                meta.setError(e.getMessage());
+                e.printStackTrace();
+            }
         } finally {
             try {
                 Files.delete(targetPath);
+                try (Stream<Path> paths = Files.list(targetPath.getParent())) {
+                    paths.filter(Files::isDirectory).forEach(item -> {
+                        if (item.getFileName().toString().equals("fragments-" + toBucket.getAdapter() + "-" + targetPath.getFileName())) {
+                            try {
+                                FileUtils.deleteDirectory(item.toFile());
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

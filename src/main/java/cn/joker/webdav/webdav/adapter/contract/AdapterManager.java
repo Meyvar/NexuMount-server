@@ -13,6 +13,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.util.StringUtils;
@@ -29,6 +30,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class AdapterManager {
 
@@ -340,6 +342,21 @@ public class AdapterManager {
             String path = PathUtils.normalizePath(fileBucket.getUuid() + fileBucket.getPath() + fileBucket.getSourcePath() + uri);
             filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
             Paths.get(filePath).toFile().delete();
+
+            try (Stream<Path> paths = Files.list(Paths.get(filePath).getParent())) {
+                paths.filter(Files::isDirectory).forEach(item -> {
+                    if (item.getFileName().toString().equals("fragments-" + fileBucket.getAdapter() + "-" + Paths.get(filePath).getFileName())){
+                        try {
+                            FileUtils.deleteDirectory(item.toFile());
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
 
 

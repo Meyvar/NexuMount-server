@@ -56,7 +56,7 @@ public class ApiServiceImpl implements IApiService {
         try {
             status = getAdapterManager(param).propFind(param.isRefresh());
             if (!status.isSuccess()) {
-                throw new RuntimeException(status.getMessage());
+                throw new RuntimeException("文件不存在");
             }
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
@@ -125,6 +125,7 @@ public class ApiServiceImpl implements IApiService {
         try {
             adapterManager.put(file.getInputStream());
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getMessage());
         }
     }
@@ -162,8 +163,7 @@ public class ApiServiceImpl implements IApiService {
         String destPathRaw = destUriObj.getPath();
 
         RequestParam toParam = new RequestParam();;
-        Path path = Paths.get(param.getPath());
-        toParam.setPath(destPathRaw + path.getFileName());
+        toParam.setPath(destPathRaw);
 
         AdapterManager toAdapterManager = getAdapterManager(toParam);
 
