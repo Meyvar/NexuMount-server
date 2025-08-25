@@ -375,9 +375,6 @@ public class BaiduAdapter implements IFileAdapter {
                 if (jsonObject.getInteger("error_code") != null) {
                     throw new RuntimeException(jsonObject.getString("error_msg"));
                 }
-
-                System.out.println(jsonObject.getString("md5"));
-
                 uploadIndex++;
             }
         }

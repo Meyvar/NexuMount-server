@@ -41,7 +41,7 @@ public class WebDavFilter extends OncePerRequestFilter {
                 StringUtils.hasText(depth)
                         || StringUtils.hasText(basic)
                         || (StringUtils.hasText(ua) && ua.contains("WebDAV"))
-                        || request.getHeader("cookie").contains("webdav-key")
+                        || request.getHeader("cookie") != null && request.getHeader("cookie").contains("webdav-key")
         ) {
 
             if (!StringUtils.hasText(basic)) {
