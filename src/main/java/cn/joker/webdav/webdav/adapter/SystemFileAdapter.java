@@ -169,6 +169,8 @@ public class SystemFileAdapter implements IFileAdapter {
                 }
                 raf.close();
                 out.flush();
+            } catch (ClientAbortException e) {
+
             }
         } else {
             if (file.isDirectory()) {

@@ -45,7 +45,7 @@ public class ApiServiceImpl implements IApiService {
             userPath = "";
         }
 
-        param.setPath(URLDecoder.decode(param.getPath(), StandardCharsets.UTF_8));
+//        param.setPath(URLDecoder.decode(param.getPath(), StandardCharsets.UTF_8));
 
         return new AdapterManager(param.getPath(), userPath);
     }

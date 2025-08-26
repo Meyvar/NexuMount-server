@@ -29,6 +29,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class WebDavServiceImpl implements IWebDavService {
@@ -53,8 +55,7 @@ public class WebDavServiceImpl implements IWebDavService {
 
 
         String method = request.getMethod();
-        String uri = URLDecoder.decode(request.getRequestURI(), StandardCharsets.UTF_8);
-
+        String uri = fixAndDecodeEncodeURI(request.getRequestURI());
         if (uri != null && uri.matches(".*/\\._.*")) {
             response.setStatus(404);
             return;
@@ -109,6 +110,57 @@ public class WebDavServiceImpl implements IWebDavService {
             }
             default -> response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
         }
+    }
+
+    private final Pattern ENCODED_PATTERN = Pattern.compile("%[0-9a-fA-F]{2}");
+
+    public String fixAndDecodeEncodeURI(String input) {
+        if (input == null) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        Matcher matcher = ENCODED_PATTERN.matcher(input);
+        int lastEnd = 0;
+
+        while (matcher.find()) {
+            // 补编码前的一段
+            String before = input.substring(lastEnd, matcher.start());
+            sb.append(encodeIfNeeded(before));
+            // 已编码部分保持不动
+            sb.append(matcher.group());
+            lastEnd = matcher.end();
+        }
+
+        // 处理最后一段
+        if (lastEnd < input.length()) {
+            sb.append(encodeIfNeeded(input.substring(lastEnd)));
+        }
+
+        try {
+            return URLDecoder.decode(sb.toString(), StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String encodeIfNeeded(String str) {
+        StringBuilder result = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            if (isSafeChar(c) || c == '/') { // 保留 / 因为 encodeURI 也保留它
+                result.append(c);
+            } else {
+                result.append(String.format("%%%02X", (int) c));
+            }
+        }
+        return result.toString();
+    }
+
+    private boolean isSafeChar(char c) {
+        return (c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                "-_.~".indexOf(c) >= 0;
     }
 
 
