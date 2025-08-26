@@ -18,6 +18,8 @@ public interface IApiService {
 
     void download(RequestParam param);
 
+    void packageDownload(List<String> list, String fileName);
+
     void upload(MultipartFile file, String path, String toPath);
 
     void createFolder(RequestParam param);
