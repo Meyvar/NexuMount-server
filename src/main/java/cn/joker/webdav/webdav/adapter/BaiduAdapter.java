@@ -518,7 +518,7 @@ public class BaiduAdapter implements IFileAdapter {
 
         String url = jsonObject.getString("dlink") + "&access_token=" + fileBucket.getFieldJson().getString("accessToken");
 
-        header.put("User-Agent", "pan.baidu.com\t");
+        header.put("User-Agent", "pan.baidu.com");
 
         return url;
     }
@@ -526,7 +526,7 @@ public class BaiduAdapter implements IFileAdapter {
     @Override
     public String workStatus(FileBucket fileBucket) {
         JSONObject jsonObject = getUserData(fileBucket.getFieldJson().getString("accessToken"));
-        if (jsonObject.getInteger("errno") != 0) {
+        if (jsonObject.getInteger("errno") == 0) {
             return "working";
         } else {
             return "error";

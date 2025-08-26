@@ -5,6 +5,8 @@ import cn.joker.webdav.webdav.adapter.contract.AdapterManager;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.RequestParam;
 import cn.joker.webdav.webdav.service.IApiService;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +54,12 @@ public class WebdavController {
     @GetMapping("/download.do")
     public void download(RequestParam param) {
         apiService.download(param);
+    }
+
+    @GetMapping("/packageDownload.do")
+    public void packageDownload(String fileList, String fileName) {
+        List<String> list = JSONObject.parseObject(fileList, List.class);
+        apiService.packageDownload(list, fileName);
     }
 
     @PostMapping("/upload.do")
