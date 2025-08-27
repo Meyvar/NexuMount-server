@@ -351,6 +351,11 @@ public class WebDavAdapter implements IFileAdapter {
         }
     }
 
+    @Override
+    public FileBucket refreshToken(FileBucket fileBucket) {
+        return null;
+    }
+
 
     class UploadInputStream extends FileInputStream {
         private UploadHook hook;

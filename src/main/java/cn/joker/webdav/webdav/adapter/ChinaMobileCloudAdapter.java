@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.XmlUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -28,12 +29,17 @@ import okhttp3.*;
 import okio.BufferedSink;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import java.io.*;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @AdapterComponent(title = "中国移动云盘")
@@ -593,6 +599,51 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         } else {
             return "status is:" + response.getStatus();
         }
+    }
+
+    @Override
+    public FileBucket refreshToken(FileBucket fileBucket) {
+        String authorization = fileBucket.getFieldJson().getString("authorization").replace("Basic ", "");
+        authorization = cn.hutool.core.codec.Base64.decodeStr(authorization);
+        System.out.println(authorization);
+
+        String[] authorizationArr = authorization.split("\\|");
+        System.out.println(authorizationArr[3]);
+
+        Date date = new Date(Long.parseLong(authorizationArr[3]));
+
+        LocalDate localDate = date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        LocalDate now = LocalDate.now();
+
+        long daysDiff = ChronoUnit.DAYS.between(now, localDate);
+        if (daysDiff > 15) {
+            return null;
+        }
+
+        String url = "https://aas.caiyun.feixin.10086.cn:443/tellin/authTokenRefresh.do";
+
+        authorizationArr = authorization.split(":");
+
+        HttpResponse response = HttpRequest.post(url)
+                .contentType("application/xml")
+                .body("<root><token>" + authorizationArr[2] + "</token><account>" + authorizationArr[1] + "</account><clienttype>656</clienttype></root>")
+                .execute();
+
+        Document doc = XmlUtil.readXML(response.body());
+        Element root = doc.getDocumentElement();
+
+        String token = XmlUtil.elementText(root, "token");
+
+        token = authorizationArr[0] + ":" + authorizationArr[1] + ":" + token;
+
+        token = "Basic " + cn.hutool.core.codec.Base64.encode(token);
+
+        fileBucket.getFieldJson().put("authorization", token);
+
+        return fileBucket;
     }
 
     private String queryId(String uri, FileBucket fileBucket) {

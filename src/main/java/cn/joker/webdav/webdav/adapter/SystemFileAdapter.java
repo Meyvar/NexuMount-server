@@ -312,4 +312,9 @@ public class SystemFileAdapter implements IFileAdapter {
     public String workStatus(FileBucket fileBucket) {
         return "working";
     }
+
+    @Override
+    public FileBucket refreshToken(FileBucket fileBucket) {
+        return null;
+    }
 }

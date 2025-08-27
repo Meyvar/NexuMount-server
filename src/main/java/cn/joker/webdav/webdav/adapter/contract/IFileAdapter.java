@@ -106,4 +106,11 @@ public interface IFileAdapter {
      * @return
      */
     String workStatus(FileBucket fileBucket);
+
+
+    /**
+     * 刷新token
+     * @param fileBucket
+     */
+    FileBucket refreshToken(FileBucket fileBucket);
 }

@@ -22,11 +22,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.net.URLConnection;
@@ -36,7 +36,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-@Slf4j
 @AdapterComponent(title = "百度网盘")
 public class BaiduAdapter implements IFileAdapter {
 
@@ -531,6 +530,27 @@ public class BaiduAdapter implements IFileAdapter {
         } else {
             return "error";
         }
+    }
+
+    @Override
+    public FileBucket refreshToken(FileBucket fileBucket) {
+        String url = "https://openapi.baidu.com/oauth/2.0/token";
+
+        Map<String, String> params = new HashMap<>();
+
+        params.put("grant_type", "refresh_token");
+        params.put("refresh_token", fileBucket.getFieldJson().getString("accessToken"));
+        params.put("client_id", "IlLqBbU3GjQ0t46TRwFateTprHWl39zF");
+        params.put("client_secret", "refresh_token");
+
+        UriComponentsBuilder builder = UriComponentsBuilder.newInstance();
+        params.forEach(builder::queryParam);
+
+//        HttpResponse response = HttpRequest.get(url)
+//                .execute();
+
+
+        return null;
     }
 
     private JSONObject getUserData(String accessToken) {

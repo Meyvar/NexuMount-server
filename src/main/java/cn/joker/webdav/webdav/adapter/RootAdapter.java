@@ -112,4 +112,9 @@ public class RootAdapter implements IFileAdapter {
     public String workStatus(FileBucket fileBucket) {
         return "";
     }
+
+    @Override
+    public FileBucket refreshToken(FileBucket fileBucket) {
+        return null;
+    }
 }
