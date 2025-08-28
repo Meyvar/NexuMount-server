@@ -1,14 +1,20 @@
 package cn.joker.webdav.webdav.adapter;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.codec.Base64;
 import cn.hutool.core.net.URLEncoder;
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.cache.FilePathCacheService;
+import cn.joker.webdav.fileTask.TaskManager;
 import cn.joker.webdav.fileTask.TaskMeta;
 import cn.joker.webdav.fileTask.UploadHook;
+import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.fileUpload.ProgressRequestBody;
 import cn.joker.webdav.utils.RequestHolder;
@@ -34,6 +40,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @AdapterComponent(title = "百度网盘")
@@ -44,8 +53,19 @@ public class BaiduAdapter implements IFileAdapter {
     @ParamAnnotation(label = "accessToken")
     private String accessToken;
 
+    @Getter
+    @Setter
+    @ParamAnnotation(label = "refreshToken")
+    private String refreshToken;
+
     @Autowired
     private FilePathCacheService filePathCacheService;
+
+    @Autowired
+    private ISysSettingService sysSettingService;
+
+    @Autowired
+    private TaskManager taskManager;
 
     private final static String BASE_URL = "https://pan.baidu.com";
 
@@ -91,10 +111,14 @@ public class BaiduAdapter implements IFileAdapter {
 
         uri = URLEncoder.createQuery().encode(uri, StandardCharsets.UTF_8);
 
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
+
 
         int start = 0;
         do {
-            String url = BASE_URL + "/rest/2.0/xpan/file?method=list&limit=1000&start=" + start + "&access_token=" + fileBucket.getFieldJson().getString("accessToken") + "&dir=" + uri;
+            String url = BASE_URL + "/rest/2.0/xpan/file?method=list&limit=1000&start=" + start + "&access_token=" + accessToken + "&dir=" + uri;
 
             HttpResponse response = HttpRequest.get(url)
                     .execute();
@@ -180,15 +204,11 @@ public class BaiduAdapter implements IFileAdapter {
 
     @Override
     public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception {
-        TaskMeta meta;
-        if (hook != null) {
-            meta = hook.getTaskMeta();
-        } else {
-            meta = null;
-        }
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
 
-
-        JSONObject jsonObject = getUserData(fileBucket.getFieldJson().getString("accessToken"));
+        JSONObject jsonObject = getUserData(accessToken);
 
         if (jsonObject.getInteger("errno") != 0) {
             throw new RuntimeException("获取用户信息失败！");
@@ -288,7 +308,7 @@ public class BaiduAdapter implements IFileAdapter {
         });
 
 
-        String createUrl = BASE_URL + "/rest/2.0/xpan/file?method=precreate&access_token=" + fileBucket.getFieldJson().getString("accessToken");
+        String createUrl = BASE_URL + "/rest/2.0/xpan/file?method=precreate&access_token=" + accessToken;
 
         OkHttpClient client = new OkHttpClient();
 
@@ -322,7 +342,7 @@ public class BaiduAdapter implements IFileAdapter {
         JSONArray blockList = jsonObject.getJSONArray("block_list");
 
         if (!blockList.isEmpty()) {
-            createUrl = "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=locateupload&appid=250528&access_token=" + fileBucket.getFieldJson().getString("accessToken")
+            createUrl = "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=locateupload&appid=250528&access_token=" + accessToken
                     + "&path=" + path
                     + "&uploadid=" + uploadid
                     + "&upload_version=2.0";
@@ -344,7 +364,7 @@ public class BaiduAdapter implements IFileAdapter {
 
             int uploadIndex = 0;
             while (uploadIndex < blockList.size()) {
-                String uploadUrl = uploadBaseApi + "/rest/2.0/pcs/superfile2?method=upload&type=tmpfile&access_token=" + fileBucket.getFieldJson().getString("accessToken")
+                String uploadUrl = uploadBaseApi + "/rest/2.0/pcs/superfile2?method=upload&type=tmpfile&access_token=" + accessToken
                         + "&path=" + URLEncoder.createQuery().encode(path, StandardCharsets.UTF_8)
                         + "&uploadid=" + uploadid
                         + "&partseq=" + blockList.getString(uploadIndex);
@@ -379,7 +399,7 @@ public class BaiduAdapter implements IFileAdapter {
         }
 
 
-        createUrl = BASE_URL + "/rest/2.0/xpan/file?method=create&access_token=" + fileBucket.getFieldJson().getString("accessToken");
+        createUrl = BASE_URL + "/rest/2.0/xpan/file?method=create&access_token=" + accessToken;
 
         formBody = new FormBody.Builder()
                 .add("path", path)
@@ -412,7 +432,11 @@ public class BaiduAdapter implements IFileAdapter {
     public void delete(FileBucket fileBucket, String path) throws IOException {
         List<String> filePath = List.of(path);
 
-        JSONObject jsonObject = filemanager(JSONObject.toJSONString(filePath), fileBucket.getFieldJson().getString("accessToken"), "delete");
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
+
+        JSONObject jsonObject = filemanager(JSONObject.toJSONString(filePath), accessToken, "delete");
         if (jsonObject.getInteger("errno") != 0) {
             throw new RuntimeException("文件删除失败！");
         }
@@ -420,7 +444,11 @@ public class BaiduAdapter implements IFileAdapter {
 
     @Override
     public void mkcol(FileBucket fileBucket, String path) throws IOException {
-        String url = BASE_URL + "/rest/2.0/xpan/file?method=create&access_token=" + fileBucket.getFieldJson().getString("accessToken");
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
+
+        String url = BASE_URL + "/rest/2.0/xpan/file?method=create&access_token=" + accessToken;
 
         OkHttpClient client = new OkHttpClient();
 
@@ -459,13 +487,21 @@ public class BaiduAdapter implements IFileAdapter {
             JSONArray jsonArray = new JSONArray();
             jsonArray.add(jsonObject);
 
-            jsonObject = filemanager(jsonArray.toJSONString(), fromFileBucket.getFieldJson().getString("accessToken"), "move");
+            String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
+            accessToken = Base64.decodeStr(accessToken);
+            accessToken = accessToken.split("\\|")[0];
+
+            jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "move");
 
             if (jsonObject.getInteger("errno") != 0) {
                 throw new RuntimeException("文件移动失败！");
             }
         } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
 
+            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
         }
     }
 
@@ -483,13 +519,21 @@ public class BaiduAdapter implements IFileAdapter {
             JSONArray jsonArray = new JSONArray();
             jsonArray.add(jsonObject);
 
-            jsonObject = filemanager(jsonArray.toJSONString(), fromFileBucket.getFieldJson().getString("accessToken"), "copy");
+            String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
+            accessToken = Base64.decodeStr(accessToken);
+            accessToken = accessToken.split("\\|")[0];
+
+            jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "copy");
 
             if (jsonObject.getInteger("errno") != 0) {
                 throw new RuntimeException("文件复制失败！");
             }
         } else {
+            //夸桶操作
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
 
+            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
         }
     }
 
@@ -511,11 +555,15 @@ public class BaiduAdapter implements IFileAdapter {
             throw new RuntimeException("获取下载地址失败！");
         }
 
-        JSONArray jsonArray = getFileData(fileIds, fileBucket.getFieldJson().getString("accessToken"));
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
+
+        JSONArray jsonArray = getFileData(fileIds, accessToken);
 
         JSONObject jsonObject = jsonArray.getJSONObject(0);
 
-        String url = jsonObject.getString("dlink") + "&access_token=" + fileBucket.getFieldJson().getString("accessToken");
+        String url = jsonObject.getString("dlink") + "&access_token=" + accessToken;
 
         header.put("User-Agent", "pan.baidu.com");
 
@@ -524,7 +572,10 @@ public class BaiduAdapter implements IFileAdapter {
 
     @Override
     public String workStatus(FileBucket fileBucket) {
-        JSONObject jsonObject = getUserData(fileBucket.getFieldJson().getString("accessToken"));
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
+        JSONObject jsonObject = getUserData(accessToken);
         if (jsonObject.getInteger("errno") == 0) {
             return "working";
         } else {
@@ -534,23 +585,58 @@ public class BaiduAdapter implements IFileAdapter {
 
     @Override
     public FileBucket refreshToken(FileBucket fileBucket) {
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+
+        Date date = new Date(Long.parseLong(accessToken.split("\\|")[1]));
+
+        LocalDate localDate = date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        LocalDate now = LocalDate.now();
+
+        long daysDiff = ChronoUnit.DAYS.between(now, localDate);
+        if (daysDiff > 15) {
+            return null;
+        }
+
+
         String url = "https://openapi.baidu.com/oauth/2.0/token";
 
         Map<String, String> params = new HashMap<>();
 
         params.put("grant_type", "refresh_token");
-        params.put("refresh_token", fileBucket.getFieldJson().getString("accessToken"));
-        params.put("client_id", "IlLqBbU3GjQ0t46TRwFateTprHWl39zF");
-        params.put("client_secret", "refresh_token");
+        params.put("refresh_token", Base64.decodeStr(fileBucket.getFieldJson().getString("refreshToken")));
+        params.put("client_id", "NqOMXF6XGhGRIGemsQ9nG0Na");
+        params.put("client_secret", "SVT6xpMdLcx6v4aCR4wT8BBOTbzFO8LM");
 
         UriComponentsBuilder builder = UriComponentsBuilder.newInstance();
         params.forEach(builder::queryParam);
 
-//        HttpResponse response = HttpRequest.get(url)
-//                .execute();
+        url += builder.toUriString();
 
+        HttpResponse response = HttpRequest.get(url)
+                .header("User-Agent", "pan.baidu.com")
+                .execute();
 
-        return null;
+        JSONObject jsonObject = JSONObject.parseObject(response.body());
+
+        try {
+            long expires_in = jsonObject.getLong("expires_in") * 1000;
+            String refresh_token = jsonObject.getString("refresh_token");
+            String access_token = jsonObject.getString("access_token") + "|" + new Date().getTime() + expires_in;
+
+            access_token = Base64.encode(access_token);
+            refresh_token = Base64.encode(refresh_token);
+
+            fileBucket.getFieldJson().put("accessToken", access_token);
+            fileBucket.getFieldJson().put("refreshToken", refresh_token);
+
+            return fileBucket;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private JSONObject getUserData(String accessToken) {

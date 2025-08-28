@@ -605,10 +605,8 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     public FileBucket refreshToken(FileBucket fileBucket) {
         String authorization = fileBucket.getFieldJson().getString("authorization").replace("Basic ", "");
         authorization = cn.hutool.core.codec.Base64.decodeStr(authorization);
-        System.out.println(authorization);
 
         String[] authorizationArr = authorization.split("\\|");
-        System.out.println(authorizationArr[3]);
 
         Date date = new Date(Long.parseLong(authorizationArr[3]));
 
