@@ -5,6 +5,7 @@ import cn.joker.webdav.business.service.IFileBucketService;
 import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.trie.FileBucketPathUtils;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -41,7 +42,7 @@ public class Task {
     /**
      * 更新存储token
      */
-    @Scheduled(fixedRate = 12 * 60 * 60 * 1000)
+    @Scheduled(fixedRate = 60 * 60 * 1000)
     public void refreshToken() {
         List<FileBucket> list = fileBucketService.findAll();
 
@@ -49,7 +50,7 @@ public class Task {
             IFileAdapter adapter = SprintContextUtil.getBean(fileBucket.getAdapter(), IFileAdapter.class);
             FileBucket bucket = adapter.refreshToken(fileBucket);
             if (bucket == null) {
-                return;
+                continue;
             }
             fileBucket.setFieldJson(bucket.getFieldJson());
             fileBucketService.save(fileBucket);

@@ -37,6 +37,7 @@ import org.springframework.util.StringUtils;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -242,9 +243,25 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public void put(FileBucket fileBucket, String path, Path tempFilePath, UploadHook hook) throws Exception {
+        String[] parts = path.split("/");
+        for (int i = 1; i < parts.length - 1; i++) {
+            String pathTemp = "/" + String.join("/", Arrays.asList(parts).subList(1, i + 1));
+            pathTemp = URLDecoder.decode(pathTemp, StandardCharsets.UTF_8);
+            if (!hasPath(fileBucket, pathTemp)) {
+                synchronized (this) {
+                    if (!hasPath(fileBucket, pathTemp)) {
+                        mkcol(fileBucket, pathTemp);
+                    }
+                }
+            }
+        }
+
+
         path = Arrays.stream(path.split("/"))
                 .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
                 .collect(Collectors.joining("/"));
+
+
         String url = fileBucket.getFieldJson().getString("davUrl") + path;
 
         Sardine sardine = getSardine(fileBucket);
@@ -389,9 +406,11 @@ public class WebDavAdapter implements IFileAdapter {
 
         public UploadInputStream(File file, UploadHook hook) throws FileNotFoundException {
             super(file);
+            if (hook != null) {
+                this.meta = hook.getTaskMeta();
+                this.startTime = System.nanoTime();
+            }
             this.hook = hook;
-            this.meta = hook.getTaskMeta();
-            this.startTime = System.nanoTime();
             totalBytes = file.length();
         }
 

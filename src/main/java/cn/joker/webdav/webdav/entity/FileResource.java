@@ -25,6 +25,8 @@ public class FileResource {
 
     private String id;
 
+    private String driveId;
+
     private List<FileResource> children = new ArrayList<>();
 
     public void addChild(FileResource child) {
