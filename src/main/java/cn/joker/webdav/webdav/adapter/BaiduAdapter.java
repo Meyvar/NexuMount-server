@@ -370,7 +370,7 @@ public class BaiduAdapter implements IFileAdapter {
                         + "&partseq=" + blockList.getString(uploadIndex);
 
 
-                RequestBody uploadBody = new ProgressRequestBody(fragments.get(blockList.getInteger(uploadIndex)), blockList.size() * fragmentsSize, (uploadIndex + 1) * fragmentsSize, nowNs, hook);
+                RequestBody uploadBody = new ProgressRequestBody(fragments.get(blockList.getInteger(uploadIndex)), blockList.size() * fragmentsSize, (uploadIndex + 1) * fragmentsSize, nowNs, hook, MediaType.parse("application/octet-stream"));
 
                 MultipartBody multipartBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)

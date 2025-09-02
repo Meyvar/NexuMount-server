@@ -20,6 +20,8 @@ import cn.joker.webdav.fileTask.taskImpl.CopyTask;
 import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
+import cn.joker.webdav.utils.fileUpload.ProgressRequestBody;
+import cn.joker.webdav.utils.fileUpload.UploadInputStream;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
@@ -32,17 +34,25 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
 import okhttp3.*;
+import okio.BufferedSink;
+import okio.Okio;
+import okio.Source;
 import org.apache.catalina.connector.ClientAbortException;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.math.BigInteger;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -235,18 +245,225 @@ public class AlipanAdapter implements IFileAdapter {
         String createUrl = BASIC_API + "/adrive/v1.0/openFile/create";
         FileResource parentFileResource = getFolderItself(fileBucket, PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
+        if (parentFileResource == null) {
+            String[] parts = path.split("/");
+            for (int i = 1; i < parts.length - 1; i++) {
+                String pathTemp = "/" + String.join("/", Arrays.asList(parts).subList(1, i + 1));
+                pathTemp = URLDecoder.decode(pathTemp, StandardCharsets.UTF_8);
+                if (!hasPath(fileBucket, pathTemp)) {
+                    synchronized (this) {
+                        if (!hasPath(fileBucket, pathTemp)) {
+                            mkcol(fileBucket, pathTemp);
+                            parentFileResource = getFolderItself(fileBucket, PathUtils.toLinuxPath(Paths.get(path).getParent()));
+                        }
+                    }
+                }
+            }
+        }
+
         JSONObject param = new JSONObject();
         param.put("drive_id", parentFileResource.getDriveId());
         param.put("parent_file_id", parentFileResource.getId());
         param.put("name", Paths.get(path).getFileName().toString());
         param.put("type", "file");
         param.put("check_name_mode", "auto_rename");
+        param.put("size", tempFilePath.toFile().length());
+        long lastModified = tempFilePath.toFile().lastModified();
+        Instant instant = Instant.ofEpochMilli(lastModified);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                .withZone(ZoneOffset.UTC);
+        String formatted = formatter.format(instant);
+        param.put("local_modified_at", formatted);
+        param.put("local_created_at", formatted);
 
-        HttpRequest.post(createUrl)
+
+        long fragmentsSize = 20 * 1024 * 1024;
+
+        JSONObject response = null;
+
+        if (tempFilePath.toFile().length() < fragmentsSize) {
+            param.put("content_hash", DigestUtil.sha1Hex(new FileInputStream(tempFilePath.toFile())));
+            param.put("content_hash_name", "sha1");
+            param.put("proof_version", "v1");
+            param.put("proof_code", getProofCode(tempFilePath, fileBucket));
+
+            String body = HttpRequest.post(createUrl)
+                    .contentType("application/json")
+                    .header("authorization", fileBucket.getFieldJson().getString("accessToken"))
+                    .body(param.toJSONString())
+                    .execute().body();
+
+            response = JSONObject.parseObject(body);
+        } else {
+            param.put("pre_hash", getPreHash(tempFilePath));
+
+            long partInfoListNum = (tempFilePath.toFile().length() + fragmentsSize - 1) / fragmentsSize;
+
+            List<JSONObject> partInfoList = new LinkedList<>();
+            for (int i = 0; i < partInfoListNum; i++) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("part_number", i + 1);
+                partInfoList.add(jsonObject);
+            }
+            param.put("part_info_list", partInfoList);
+
+
+            String body = HttpRequest.post(createUrl)
+                    .contentType("application/json")
+                    .header("authorization", fileBucket.getFieldJson().getString("accessToken"))
+                    .body(param.toJSONString())
+                    .execute().body();
+
+            response = JSONObject.parseObject(body);
+
+            if (StringUtils.hasText(response.getString("code")) && response.getString("code").equals("PreHashMatched")) {
+                param.remove("pre_hash");
+
+                param.put("content_hash", DigestUtil.sha1Hex(new FileInputStream(tempFilePath.toFile())));
+                param.put("content_hash_name", "sha1");
+                param.put("proof_version", "v1");
+                param.put("proof_code", getProofCode(tempFilePath, fileBucket));
+
+                body = HttpRequest.post(createUrl)
+                        .contentType("application/json")
+                        .header("authorization", fileBucket.getFieldJson().getString("accessToken"))
+                        .body(param.toJSONString())
+                        .execute().body();
+
+                response = JSONObject.parseObject(body);
+            }
+        }
+
+        if (response.getBoolean("rapid_upload")) {
+            return;
+        }
+
+        JSONArray partInfoList = response.getJSONArray("part_info_list");
+
+        //文件切片
+
+        String destDir = tempFilePath.getParent() + "/fragments-" + fileBucket.getAdapter() + "-" + tempFilePath.getFileName();
+
+        Files.createDirectories(Paths.get(destDir));
+
+        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(tempFilePath.toFile()))) {
+            byte[] buffer = new byte[1024 * 1024]; // 1MB缓冲区
+            int bytesRead;
+            int partNumber = 1;
+            long currentSize = 0;
+
+            File currentPartFile = new File(destDir, String.valueOf(partNumber));
+            FileOutputStream fos = new FileOutputStream(currentPartFile);
+
+            while ((bytesRead = bis.read(buffer)) != -1) {
+
+                if (currentSize + bytesRead > fragmentsSize) {
+                    // 当前分片已满，写入剩余部分到新文件
+                    int remain = (int) (fragmentsSize - currentSize);
+                    fos.write(buffer, 0, remain);
+                    fos.close();
+
+                    partNumber++;
+                    currentPartFile = new File(destDir, String.valueOf(partNumber));
+                    fos = new FileOutputStream(currentPartFile);
+
+                    // 写入剩余到新分片
+                    fos.write(buffer, remain, bytesRead - remain);
+                    currentSize = bytesRead - remain;
+                } else {
+                    fos.write(buffer, 0, bytesRead);
+                    currentSize += bytesRead;
+                }
+            }
+
+            fos.close();
+        }
+
+        List<File> fragments = new ArrayList<>();
+
+        Files.list(Paths.get(destDir)).forEach(file -> {
+            if (file.toFile().isFile()) {
+                fragments.add(file.toFile());
+            }
+        });
+
+        fragments.sort(new Comparator<File>() {
+            @Override
+            public int compare(File o1, File o2) {
+                int f1 = Integer.parseInt(o1.getName());
+                int f2 = Integer.parseInt(o2.getName());
+                if (f1 > f2) {
+                    return 1;
+                } else if (f1 < f2) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        });
+
+        long startTime = System.currentTimeMillis();
+        long nowNs = System.nanoTime();
+
+        OkHttpClient client = new OkHttpClient();
+        for (int i = 0; i < partInfoList.size(); i++) {
+            JSONObject jsonObject = partInfoList.getJSONObject(i);
+
+            int partNumber = jsonObject.getInteger("part_number");
+            String uploadUrl = jsonObject.getString("upload_url");
+
+            File fragmentFile = fragments.get(i);
+
+            RequestBody requestBody = new ProgressRequestBody(fragmentFile, tempFilePath.toFile().length(), fragmentsSize * (i + 1), nowNs, hook, null);
+
+
+            Request uploadRequest = new Request.Builder()
+                    .url(uploadUrl)
+                    .put(requestBody)
+                    .build();
+
+            Response uploadResp = client.newCall(uploadRequest).execute();
+
+            if (!uploadResp.isSuccessful()) {
+                throw new RuntimeException("upload failed status:" + uploadResp.code());
+            }
+
+            long endTime = System.currentTimeMillis();
+
+            long diffMillis = endTime - startTime;
+            long diffMinutes = diffMillis / (1000 * 60);
+            if (diffMinutes >= 50) {
+                param = new JSONObject();
+                param.put("drive_id", response.getString("drive_id"));
+                param.put("file_id", response.getString("file_id"));
+                param.put("upload_id", response.getString("upload_id"));
+                param.put("part_info_list", partInfoList);
+
+                String url = BASIC_API + "/adrive/v1.0/openFile/getUploadUrl";
+                String uploadUrlStr = HttpRequest.post(url)
+                        .contentType("application/json")
+                        .header("authorization", fileBucket.getFieldJson().getString("accessToken"))
+                        .body(param.toJSONString())
+                        .execute().body();
+
+                JSONObject uploadUrlJSON = JSONObject.parseObject(uploadUrlStr);
+                partInfoList = uploadUrlJSON.getJSONArray("part_info_list");
+            }
+        }
+
+        String url = BASIC_API + "/adrive/v1.0/openFile/complete";
+        param = new JSONObject();
+        param.put("drive_id", response.getString("drive_id"));
+        param.put("file_id", response.getString("file_id"));
+        param.put("upload_id", response.getString("upload_id"));
+
+        String completeStr = HttpRequest.post(url)
                 .contentType("application/json")
                 .header("authorization", fileBucket.getFieldJson().getString("accessToken"))
                 .body(param.toJSONString())
-                .execute();
+                .execute().body();
+
+        System.out.println(completeStr);
     }
 
     @Override
@@ -657,5 +874,78 @@ public class AlipanAdapter implements IFileAdapter {
         params.put("nonce", "");
         params.put("t", t);
         return params;
+    }
+
+    private String getPreHash(Path tempFilePath) {
+        String preHash = "";
+        try (InputStream in = new FileInputStream(tempFilePath.toFile())) {
+            byte[] buf = new byte[1024];
+            int n = in.read(buf);                 // 只读前 1KB
+            if (n <= 0) return DigestUtil.sha1Hex(new byte[0]); // 空文件
+            preHash = DigestUtil.sha1Hex(new ByteArrayInputStream(buf, 0, n));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+        return preHash;
+    }
+
+    private JSONObject getProofRange(String input, long size) {
+        JSONObject jsonObject = new JSONObject();
+        if (size == 0) {
+            jsonObject.put("start", 0);
+            jsonObject.put("end", 0);
+            return jsonObject;
+        }
+
+        // 1. 计算 MD5
+        String md5 = DigestUtil.md5Hex(input);
+        String first16 = md5.substring(0, 16);
+
+        // 2. 转 unsigned long
+        BigInteger bigInt = new BigInteger(first16, 16);
+        // 3. 对 size 取模
+        long index = bigInt.mod(BigInteger.valueOf(size)).longValue();
+
+        // 4. 构建范围
+        long end = index + 8;
+        if (end >= size) end = size;
+
+        jsonObject.put("start", index);
+        jsonObject.put("end", end);
+
+        return jsonObject;
+    }
+
+    private String getProofCode(Path tempFilePath, FileBucket fileBucket) {
+        long size = tempFilePath.toFile().length();
+        String accessToken = fileBucket.getFieldJson().getString("accessToken");
+        JSONObject proofRange = getProofRange(accessToken, size);
+
+        long length = proofRange.getLong("end") - proofRange.getLong("start");
+        if (length <= 0) {
+            return "";
+        }
+
+        byte[] buf = new byte[(int) length];
+
+
+        try (InputStream is = new FileInputStream(tempFilePath.toFile())) {
+            // 跳到 start
+            long skipped = is.skip(proofRange.getLong("start"));
+            if (skipped < proofRange.getLong("start")) {
+                throw new IOException("无法跳转到指定偏移: " + proofRange.getLong("start"));
+            }
+
+            int read = is.read(buf);
+            if (read < length) {
+                throw new IOException("读取字节不足, expected=" + length + ", got=" + read);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+
+        return Base64.encode(buf);
     }
 }

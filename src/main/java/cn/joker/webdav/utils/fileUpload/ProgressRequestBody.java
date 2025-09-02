@@ -12,15 +12,17 @@ import java.io.IOException;
 public class ProgressRequestBody extends RequestBody {
     private final File file;
     private final UploadInputStream inputStream;
+    private final MediaType  mediaType;
 
-    public ProgressRequestBody(File file, long totalSize, long historySize, long nowNs, UploadHook hook) throws FileNotFoundException {
+    public ProgressRequestBody(File file, long totalSize, long historySize, long nowNs, UploadHook hook, MediaType mediaType) throws FileNotFoundException {
         this.file = file;
         this.inputStream = new UploadInputStream(file, hook, totalSize, historySize, nowNs);
+        this.mediaType = mediaType;
     }
 
     @Override
     public MediaType contentType() {
-        return MediaType.parse("application/octet-stream");
+        return mediaType;
     }
 
     @Override
