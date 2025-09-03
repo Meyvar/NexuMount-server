@@ -14,9 +14,9 @@ public class ProgressRequestBody extends RequestBody {
     private final UploadInputStream inputStream;
     private final MediaType  mediaType;
 
-    public ProgressRequestBody(File file, long totalSize, long historySize, long nowNs, UploadHook hook, MediaType mediaType) throws FileNotFoundException {
+    public ProgressRequestBody(File file, long totalSize, long historySize, UploadHook hook, MediaType mediaType) throws FileNotFoundException {
         this.file = file;
-        this.inputStream = new UploadInputStream(file, hook, totalSize, historySize, nowNs);
+        this.inputStream = new UploadInputStream(file, hook, totalSize, historySize);
         this.mediaType = mediaType;
     }
 

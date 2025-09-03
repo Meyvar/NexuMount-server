@@ -102,6 +102,8 @@ public class CopyTask extends FileTransferTask {
 
                 DecimalFormat df = new DecimalFormat("#.##");
 
+                long lastDownloaded = 0;
+
                 boolean released = false;
                 while ((bytesRead = in.read(buffer)) != -1) {
 
@@ -135,8 +137,6 @@ public class CopyTask extends FileTransferTask {
                     out.write(buffer, 0, bytesRead);
                     downloaded += bytesRead;
 
-                    meta.setTransferredBytes(downloaded);
-
                     // 计算进度
                     if (totalSize > 0) {
                         double progress = (downloaded * 100.0 / totalSize);
@@ -144,10 +144,14 @@ public class CopyTask extends FileTransferTask {
                     }
 
                     // 计算速度（KB/s）
-                    long elapsed = (System.currentTimeMillis() - startTime) / 1000;
-                    if (elapsed > 0) {
-                        double speed = downloaded / 1024.0 / elapsed;
+                    long endTime = System.currentTimeMillis();
+                    double elapsed = (endTime - startTime) / 1000.0;
+                    if (elapsed > 1) {
+                        long downloadedSize = downloaded - lastDownloaded;
+                        double speed = downloadedSize / 1024.0 / elapsed;
                         meta.setElapsed(df.format(speed));
+                        startTime = endTime;
+                        lastDownloaded = downloaded;
                     }
                 }
 

@@ -403,7 +403,6 @@ public class AlipanAdapter implements IFileAdapter {
         });
 
         long startTime = System.currentTimeMillis();
-        long nowNs = System.nanoTime();
 
         OkHttpClient client = new OkHttpClient();
         for (int i = 0; i < partInfoList.size(); i++) {
@@ -414,7 +413,7 @@ public class AlipanAdapter implements IFileAdapter {
 
             File fragmentFile = fragments.get(i);
 
-            RequestBody requestBody = new ProgressRequestBody(fragmentFile, tempFilePath.toFile().length(), fragmentsSize * (i + 1), nowNs, hook, null);
+            RequestBody requestBody = new ProgressRequestBody(fragmentFile, tempFilePath.toFile().length(), fragmentsSize * (i + 1), hook, null);
 
 
             Request uploadRequest = new Request.Builder()
@@ -505,75 +504,20 @@ public class AlipanAdapter implements IFileAdapter {
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
+        FileResource fromFileResource = getFolderItself(fromFileBucket, fromPath);
+        FileResource toParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(toPath).getParent()));
 
-            FileResource fromFileResource = getFolderItself(fromFileBucket, fromPath);
-            FileResource toParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(toPath).getParent()));
+        if (fromFileResource.getDriveId().equals(toParentFileResource.getDriveId())) {
+            FileResource fromParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(fromPath).getParent()));
 
-            if (fromFileResource.getDriveId().equals(toParentFileResource.getDriveId())) {
-                FileResource fromParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(fromPath).getParent()));
-
-                if (fromParentFileResource.getId().equals(toParentFileResource.getId())) {
-                    //重命名
-                    String url = BASIC_API + "/adrive/v1.0/openFile/update";
-                    JSONObject param = new JSONObject();
-                    param.put("drive_id", fromFileResource.getDriveId());
-                    param.put("file_id", fromFileResource.getId());
-                    param.put("check_name_mode", "auto_rename");
-                    param.put("name", Paths.get(toPath).getFileName().toString());
-
-                    HttpRequest.post(url)
-                            .contentType("application/json")
-                            .header("authorization", fromFileBucket.getFieldJson().getString("accessToken"))
-                            .body(param.toJSONString())
-                            .execute();
-                } else {
-                    //移动
-                    String url = BASIC_API + "/adrive/v1.0/openFile/move";
-                    JSONObject param = new JSONObject();
-                    param.put("drive_id", fromFileResource.getDriveId());
-                    param.put("file_id", fromFileResource.getId());
-                    param.put("to_drive_id", toParentFileResource.getDriveId());
-                    param.put("to_parent_file_id", toParentFileResource.getId());
-                    param.put("check_name_mode", "auto_rename");
-
-                    HttpRequest.post(url)
-                            .contentType("application/json")
-                            .header("authorization", fromFileBucket.getFieldJson().getString("accessToken"))
-                            .body(param.toJSONString())
-                            .execute();
-                }
-            } else {
-                String uuid = UUID.randomUUID().toString().replace("-", "");
-                MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-                taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
-            }
-        } else {
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
-        }
-
-    }
-
-    @Override
-    public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            String url = BASIC_API + "/adrive/v1.0/openFile/copy";
-
-            FileResource fromFileResource = getFolderItself(fromFileBucket, fromPath);
-
-            FileResource toParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(toPath).getParent()));
-
-            if (fromFileResource.getDriveId().equals(toParentFileResource.getDriveId())) {
+            if (fromParentFileResource.getId().equals(toParentFileResource.getId())) {
+                //重命名
+                String url = BASIC_API + "/adrive/v1.0/openFile/update";
                 JSONObject param = new JSONObject();
                 param.put("drive_id", fromFileResource.getDriveId());
                 param.put("file_id", fromFileResource.getId());
-                param.put("to_drive_id", toParentFileResource.getDriveId());
-                param.put("to_parent_file_id", toParentFileResource.getId());
-                param.put("auto_rename", true);
+                param.put("check_name_mode", "auto_rename");
+                param.put("name", Paths.get(toPath).getFileName().toString());
 
                 HttpRequest.post(url)
                         .contentType("application/json")
@@ -581,11 +525,50 @@ public class AlipanAdapter implements IFileAdapter {
                         .body(param.toJSONString())
                         .execute();
             } else {
-                String uuid = UUID.randomUUID().toString().replace("-", "");
-                CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+                //移动
+                String url = BASIC_API + "/adrive/v1.0/openFile/move";
+                JSONObject param = new JSONObject();
+                param.put("drive_id", fromFileResource.getDriveId());
+                param.put("file_id", fromFileResource.getId());
+                param.put("to_drive_id", toParentFileResource.getDriveId());
+                param.put("to_parent_file_id", toParentFileResource.getId());
+                param.put("check_name_mode", "auto_rename");
 
-                taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+                HttpRequest.post(url)
+                        .contentType("application/json")
+                        .header("authorization", fromFileBucket.getFieldJson().getString("accessToken"))
+                        .body(param.toJSONString())
+                        .execute();
             }
+        } else {
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+
+            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
+        }
+    }
+
+    @Override
+    public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
+        String url = BASIC_API + "/adrive/v1.0/openFile/copy";
+
+        FileResource fromFileResource = getFolderItself(fromFileBucket, fromPath);
+
+        FileResource toParentFileResource = getFolderItself(fromFileBucket, PathUtils.toLinuxPath(Paths.get(toPath).getParent()));
+
+        if (fromFileResource.getDriveId().equals(toParentFileResource.getDriveId())) {
+            JSONObject param = new JSONObject();
+            param.put("drive_id", fromFileResource.getDriveId());
+            param.put("file_id", fromFileResource.getId());
+            param.put("to_drive_id", toParentFileResource.getDriveId());
+            param.put("to_parent_file_id", toParentFileResource.getId());
+            param.put("auto_rename", true);
+
+            HttpRequest.post(url)
+                    .contentType("application/json")
+                    .header("authorization", fromFileBucket.getFieldJson().getString("accessToken"))
+                    .body(param.toJSONString())
+                    .execute();
         } else {
             String uuid = UUID.randomUUID().toString().replace("-", "");
             CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());

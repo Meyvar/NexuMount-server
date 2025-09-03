@@ -1,8 +1,13 @@
 package cn.joker.webdav.webdav.adapter.contract;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.joker.webdav.business.entity.FileBucket;
+import cn.joker.webdav.business.service.ISysSettingService;
 import cn.joker.webdav.cache.FilePathCacheService;
 import cn.joker.webdav.config.ExternalConfig;
+import cn.joker.webdav.fileTask.TaskManager;
+import cn.joker.webdav.fileTask.taskImpl.CopyTask;
+import cn.joker.webdav.fileTask.taskImpl.MoveTask;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.RequestHolder;
 import cn.joker.webdav.utils.SprintContextUtil;
@@ -345,7 +350,7 @@ public class AdapterManager {
 
             try (Stream<Path> paths = Files.list(Paths.get(filePath).getParent())) {
                 paths.filter(Files::isDirectory).forEach(item -> {
-                    if (item.getFileName().toString().equals("fragments-" + fileBucket.getAdapter() + "-" + Paths.get(filePath).getFileName())){
+                    if (item.getFileName().toString().equals("fragments-" + fileBucket.getAdapter() + "-" + Paths.get(filePath).getFileName())) {
                         try {
                             FileUtils.deleteDirectory(item.toFile());
                         } catch (IOException e) {
@@ -381,8 +386,22 @@ public class AdapterManager {
             }
         }
 
+        String fromPath = PathUtils.normalizePath(fileBucket.getSourcePath() + uri);
+        String toPath = PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
 
-        adapter.move(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
+        if (fileBucket.getUuid().equals(toAdapterManager.fileBucket.getUuid())) {
+            adapter.move(fileBucket, fromPath, toAdapterManager.fileBucket, toPath);
+        } else {
+
+            ISysSettingService sysSettingService = SprintContextUtil.getBean("sysSettingServiceImpl", ISysSettingService.class);
+            TaskManager taskManager = SprintContextUtil.getBean("taskManager", TaskManager.class);
+
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            MoveTask moveTask = new MoveTask(uuid, fileBucket, toAdapterManager.fileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+
+            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
+        }
+
 
         String path = PathUtils.normalizePath(fileBucket.getUuid() + fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));
@@ -410,7 +429,20 @@ public class AdapterManager {
             return status;
         }
 
-        adapter.copy(fileBucket, PathUtils.normalizePath(fileBucket.getSourcePath() + uri), toAdapterManager.fileBucket, PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw));
+        String fromPath = PathUtils.normalizePath(fileBucket.getSourcePath() + uri);
+        String toPath = PathUtils.normalizePath(toAdapterManager.fileBucket.getSourcePath() + destPathRaw);
+        if (fileBucket.getUuid().equals(toAdapterManager.fileBucket.getUuid())) {
+            adapter.copy(fileBucket, fromPath, toAdapterManager.fileBucket, toPath);
+        } else {
+            ISysSettingService sysSettingService = SprintContextUtil.getBean("sysSettingServiceImpl", ISysSettingService.class);
+            TaskManager taskManager = SprintContextUtil.getBean("taskManager", TaskManager.class);
+
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            CopyTask copyTask = new CopyTask(uuid, fileBucket, toAdapterManager.fileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
+
+            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+        }
+
 
         String path = PathUtils.normalizePath(fileBucket.getUuid() + fileBucket.getPath() + fileBucket.getSourcePath() + uri);
         filePathCacheService.remove(PathUtils.toLinuxPath(Paths.get(path).getParent()));

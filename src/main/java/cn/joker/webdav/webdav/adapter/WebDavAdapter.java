@@ -294,50 +294,34 @@ public class WebDavAdapter implements IFileAdapter {
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            fromPath = Arrays.stream(fromPath.split("/"))
-                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
-                    .collect(Collectors.joining("/"));
+        fromPath = Arrays.stream(fromPath.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
-            String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
+        String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
 
-            toPath = Arrays.stream(toPath.split("/"))
-                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
-                    .collect(Collectors.joining("/"));
+        toPath = Arrays.stream(toPath.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
-            Sardine sardine = getSardine(fromFileBucket);
-            sardine.move(url, toPath);
-        } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
-        }
+        Sardine sardine = getSardine(fromFileBucket);
+        sardine.move(url, toPath);
     }
 
     @Override
     public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            fromPath = Arrays.stream(fromPath.split("/"))
-                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
-                    .collect(Collectors.joining("/"));
+        fromPath = Arrays.stream(fromPath.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
-            String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
+        String url = fromFileBucket.getFieldJson().getString("davUrl") + fromPath;
 
-            toPath = Arrays.stream(toPath.split("/"))
-                    .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
-                    .collect(Collectors.joining("/"));
+        toPath = Arrays.stream(toPath.split("/"))
+                .map(s -> URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
 
-            Sardine sardine = getSardine(fromFileBucket);
-            sardine.copy(url, toPath);
-        } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
-        }
+        Sardine sardine = getSardine(fromFileBucket);
+        sardine.copy(url, toPath);
     }
 
     @Override
@@ -447,7 +431,6 @@ public class WebDavAdapter implements IFileAdapter {
 
                 meta.setProgress(df.format(progressPercent));
                 meta.setElapsed(df.format(currentSpeedKBps)); // 显示当前速度
-                meta.setTransferredBytes(uploadedBytes);
             }
         }
 

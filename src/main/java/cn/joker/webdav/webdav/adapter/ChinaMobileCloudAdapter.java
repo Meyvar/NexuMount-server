@@ -298,7 +298,6 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
                             if (hook.cancel()) {
                                 return;
                             }
-                            meta.setTransferredBytes((long) i * buffer.length);
                         }
 
                         jsonObject = partInfos.getJSONObject(i);
@@ -443,82 +442,64 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            Path oldPath = Paths.get(fromPath);
-            Path newPath = Paths.get(toPath);
+        Path oldPath = Paths.get(fromPath);
+        Path newPath = Paths.get(toPath);
 
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
-            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
+        jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
 
-            String url = BASIC_URL + "/file/batchMove";
+        String url = BASIC_URL + "/file/batchMove";
 
-            HttpResponse response = HttpRequest.post(url)
-                    .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
-                    .body(jsonObject.toJSONString())
-                    .execute();
+        HttpResponse response = HttpRequest.post(url)
+                .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
+                .body(jsonObject.toJSONString())
+                .execute();
 
-            if (response.isOk()) {
-                jsonObject = JSONObject.parseObject(response.body());
-                if (!jsonObject.getBoolean("success")) {
-                    throw new RuntimeException(jsonObject.getString("message"));
-                }
-            } else {
-                throw new RuntimeException("status is " + response.getStatus());
+        if (response.isOk()) {
+            jsonObject = JSONObject.parseObject(response.body());
+            if (!jsonObject.getBoolean("success")) {
+                throw new RuntimeException(jsonObject.getString("message"));
             }
-
-            taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
-
         } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
+            throw new RuntimeException("status is " + response.getStatus());
         }
+
+        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
 
 
     }
 
     @Override
     public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            //同一个存储桶操作
 
-            Path oldPath = Paths.get(fromPath);
-            Path newPath = Paths.get(toPath);
+        Path oldPath = Paths.get(fromPath);
+        Path newPath = Paths.get(toPath);
 
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
-            jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("fileIds", Collections.singletonList(queryId(oldPath.toString(), fromFileBucket)));
+        jsonObject.put("toParentFileId", queryId(newPath.getParent().toString(), fromFileBucket));
 
-            String url = BASIC_URL + "/file/batchCopy";
+        String url = BASIC_URL + "/file/batchCopy";
 
-            HttpResponse response = HttpRequest.post(url)
-                    .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
-                    .body(jsonObject.toJSONString())
-                    .execute();
+        HttpResponse response = HttpRequest.post(url)
+                .addHeaders(getHeader(fromFileBucket.getFieldJson().getString("authorization")))
+                .body(jsonObject.toJSONString())
+                .execute();
 
-            if (response.isOk()) {
-                jsonObject = JSONObject.parseObject(response.body());
-                if (!jsonObject.getBoolean("success")) {
-                    throw new RuntimeException(jsonObject.getString("message"));
-                }
-            } else {
-                throw new RuntimeException("status is " + response.getStatus());
+        if (response.isOk()) {
+            jsonObject = JSONObject.parseObject(response.body());
+            if (!jsonObject.getBoolean("success")) {
+                throw new RuntimeException(jsonObject.getString("message"));
             }
-
-            taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
-
         } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+            throw new RuntimeException("status is " + response.getStatus());
         }
+
+        taskGet(jsonObject.getJSONObject("data").getString("taskId"), fromFileBucket.getFieldJson().getString("authorization"));
+
 
     }
 

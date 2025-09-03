@@ -134,8 +134,6 @@ public class MoveTask extends FileTransferTask {
                     out.write(buffer, 0, bytesRead);
                     downloaded += bytesRead;
 
-                    meta.setTransferredBytes(downloaded);
-
                     // 计算进度
                     if (totalSize > 0) {
                         double progress = (downloaded * 100.0 / totalSize);

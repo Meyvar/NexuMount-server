@@ -360,8 +360,6 @@ public class BaiduAdapter implements IFileAdapter {
             String uploadBaseApi = servers.getJSONObject(0).getString("server");
             int uploadBaseApiIndex = 0;
 
-            long nowNs = System.nanoTime();
-
             int uploadIndex = 0;
             while (uploadIndex < blockList.size()) {
                 String uploadUrl = uploadBaseApi + "/rest/2.0/pcs/superfile2?method=upload&type=tmpfile&access_token=" + accessToken
@@ -370,7 +368,7 @@ public class BaiduAdapter implements IFileAdapter {
                         + "&partseq=" + blockList.getString(uploadIndex);
 
 
-                RequestBody uploadBody = new ProgressRequestBody(fragments.get(blockList.getInteger(uploadIndex)), blockList.size() * fragmentsSize, (uploadIndex + 1) * fragmentsSize, nowNs, hook, MediaType.parse("application/octet-stream"));
+                RequestBody uploadBody = new ProgressRequestBody(fragments.get(blockList.getInteger(uploadIndex)), blockList.size() * fragmentsSize, (uploadIndex + 1) * fragmentsSize, hook, MediaType.parse("application/octet-stream"));
 
                 MultipartBody multipartBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
@@ -475,65 +473,49 @@ public class BaiduAdapter implements IFileAdapter {
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("path", fromPath);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("path", fromPath);
 
-            Path path = Paths.get(toPath);
+        Path path = Paths.get(toPath);
 
-            jsonObject.put("dest", PathUtils.toLinuxPath(path.getParent()));
-            jsonObject.put("newname", path.getFileName());
+        jsonObject.put("dest", PathUtils.toLinuxPath(path.getParent()));
+        jsonObject.put("newname", path.getFileName());
 
-            JSONArray jsonArray = new JSONArray();
-            jsonArray.add(jsonObject);
+        JSONArray jsonArray = new JSONArray();
+        jsonArray.add(jsonObject);
 
-            String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
-            accessToken = Base64.decodeStr(accessToken);
-            accessToken = accessToken.split("\\|")[0];
+        String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
 
-            jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "move");
+        jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "move");
 
-            if (jsonObject.getInteger("errno") != 0) {
-                throw new RuntimeException("文件移动失败！");
-            }
-        } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, moveTask, StpUtil.getTokenValue());
+        if (jsonObject.getInteger("errno") != 0) {
+            throw new RuntimeException("文件移动失败！");
         }
     }
 
     @Override
     public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("path", fromPath);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("path", fromPath);
 
-            Path path = Paths.get(toPath);
+        Path path = Paths.get(toPath);
 
-            jsonObject.put("dest", PathUtils.toLinuxPath(path.getParent()));
-            jsonObject.put("newname", path.getFileName());
+        jsonObject.put("dest", PathUtils.toLinuxPath(path.getParent()));
+        jsonObject.put("newname", path.getFileName());
 
-            JSONArray jsonArray = new JSONArray();
-            jsonArray.add(jsonObject);
+        JSONArray jsonArray = new JSONArray();
+        jsonArray.add(jsonObject);
 
-            String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
-            accessToken = Base64.decodeStr(accessToken);
-            accessToken = accessToken.split("\\|")[0];
+        String accessToken = fromFileBucket.getFieldJson().getString("accessToken");
+        accessToken = Base64.decodeStr(accessToken);
+        accessToken = accessToken.split("\\|")[0];
 
-            jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "copy");
+        jsonObject = filemanager(jsonArray.toJSONString(), accessToken, "copy");
 
-            if (jsonObject.getInteger("errno") != 0) {
-                throw new RuntimeException("文件复制失败！");
-            }
-        } else {
-            //夸桶操作
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSettingService.get().getTaskBufferSize());
-
-            taskManager.startTask(uuid, copyTask, StpUtil.getTokenValue());
+        if (jsonObject.getInteger("errno") != 0) {
+            throw new RuntimeException("文件复制失败！");
         }
     }
 

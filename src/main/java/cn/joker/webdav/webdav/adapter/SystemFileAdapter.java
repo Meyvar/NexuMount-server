@@ -253,53 +253,28 @@ public class SystemFileAdapter implements IFileAdapter {
 
     @Override
     public void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            Files.createDirectories(Paths.get(toPath).getParent());
-            Files.move(Paths.get(fromPath), Paths.get(toPath));
-
-        } else {
-            //夸桶操作
-
-            SysSetting sysSetting = sysSettingService.get();
-            String token = StpUtil.getTokenValue();
-
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            MoveTask moveTask = new MoveTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSetting.getTaskBufferSize());
-
-            taskManager.startTask(uuid, moveTask, token);
-        }
+        Files.createDirectories(Paths.get(toPath).getParent());
+        Files.move(Paths.get(fromPath), Paths.get(toPath));
     }
 
     @Override
     public void copy(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException {
-        if (fromFileBucket.getUuid().equals(toFileBucket.getUuid())) {
-            //同一个存储桶操作
-            File sourceFile = Paths.get(fromPath).toFile();
-            File destFile = Paths.get(toPath).toFile();
-            if (sourceFile.isDirectory()) {
-                Files.walk(sourceFile.toPath()).forEach(source -> {
-                    try {
-                        Path target = destFile.toPath().resolve(sourceFile.toPath().relativize(source));
-                        Files.createDirectories(target.getParent());
-                        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            } else {
-                Files.createDirectories(destFile.getParentFile().toPath());
-                Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
+        //同一个存储桶操作
+        File sourceFile = Paths.get(fromPath).toFile();
+        File destFile = Paths.get(toPath).toFile();
+        if (sourceFile.isDirectory()) {
+            Files.walk(sourceFile.toPath()).forEach(source -> {
+                try {
+                    Path target = destFile.toPath().resolve(sourceFile.toPath().relativize(source));
+                    Files.createDirectories(target.getParent());
+                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } else {
-            //夸桶操作
-
-            SysSetting sysSetting = sysSettingService.get();
-            String token = StpUtil.getTokenValue();
-
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            CopyTask copyTask = new CopyTask(uuid, fromFileBucket, toFileBucket, fromPath, toPath, sysSetting.getTaskBufferSize());
-
-            taskManager.startTask(uuid, copyTask, token);
+            Files.createDirectories(destFile.getParentFile().toPath());
+            Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

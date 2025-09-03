@@ -13,11 +13,8 @@ public class TaskMeta {
     //任务状态
     private volatile TaskStatus status;
 
-    //任务大小
-    private volatile long transferredBytes;
-
     //最后更新时间
-    private volatile Instant lastUpdateTime;
+    private volatile long lastUpdateTime;
 
     //任务说明
     private volatile String describe;
@@ -43,8 +40,7 @@ public class TaskMeta {
     public TaskMeta(String taskId, String userToken) {
         this.taskId = taskId;
         this.status = TaskStatus.PAUSED; // 默认暂停，启动时改为 RUNNING
-        this.transferredBytes = 0;
-        this.lastUpdateTime = Instant.now();
+        this.lastUpdateTime = System.currentTimeMillis();
         this.schedule = "等待任务执行";
         this.setProgress("0");
         this.userToken = userToken;

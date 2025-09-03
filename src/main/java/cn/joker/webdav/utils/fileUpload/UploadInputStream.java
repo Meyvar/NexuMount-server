@@ -19,7 +19,6 @@ public class UploadInputStream extends FileInputStream {
     DecimalFormat df = new DecimalFormat("#.##");
     private long totalBytes;
     private long historySize;
-    private long nowNs;
 
 
     @SneakyThrows
@@ -43,7 +42,7 @@ public class UploadInputStream extends FileInputStream {
     }
 
 
-    public UploadInputStream(File file, UploadHook hook, long totalSize, long historySize, long nowNs) throws FileNotFoundException {
+    public UploadInputStream(File file, UploadHook hook, long totalSize, long historySize) throws FileNotFoundException {
         super(file);
         if (hook != null) {
             this.hook = hook;
@@ -51,12 +50,10 @@ public class UploadInputStream extends FileInputStream {
         }
         this.totalBytes = totalSize;
         this.historySize = historySize;
-        this.nowNs = nowNs;
     }
 
 
     private long lastUploadedBytes = historySize;
-    private long lastReportNs = System.nanoTime();
 
     private static final double ALPHA = 0.2; // 平滑系数
     private double smoothedSpeedKBps = 0.0;
@@ -67,16 +64,17 @@ public class UploadInputStream extends FileInputStream {
             double progressPercent = (uploadedBytes + historySize) * 100.0 / totalBytes;
 
             long intervalBytes = (uploadedBytes + historySize) - (lastUploadedBytes + historySize);
-            double intervalSeconds = (System.nanoTime() - lastReportNs) / 1_000_000_000.0;
-            double currentSpeedKBps = 0;
-            if (intervalSeconds > 0.0) {
-                currentSpeedKBps = intervalBytes / 1024.0 / intervalSeconds;
-                smoothedSpeedKBps = ALPHA * currentSpeedKBps + (1 - ALPHA) * smoothedSpeedKBps;
+            double intervalSeconds = (System.currentTimeMillis() - meta.getLastUpdateTime()) / 1000.0;
+            if (intervalSeconds < 1){
+                return;
             }
+
+            double currentSpeedKBps = intervalBytes / 1024.0 / intervalSeconds;
+            smoothedSpeedKBps = ALPHA * currentSpeedKBps + (1 - ALPHA) * smoothedSpeedKBps;
 
             // 更新记录
             lastUploadedBytes = uploadedBytes;
-            lastReportNs = System.nanoTime();
+            meta.setLastUpdateTime(System.currentTimeMillis());
 
             meta.setProgress(df.format(progressPercent));
             meta.setElapsed(df.format(smoothedSpeedKBps)); // 显示平滑速度
