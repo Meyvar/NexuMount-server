@@ -5,11 +5,18 @@ import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.fileTask.*;
 import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.utils.SprintContextUtil;
+import cn.joker.webdav.webdav.adapter.FtpAdapter;
+import cn.joker.webdav.webdav.adapter.SFTPAdapter;
 import cn.joker.webdav.webdav.adapter.SystemFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.entity.FileResource;
-import kotlin.time.TimeMark;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpATTRS;
 import okhttp3.*;
+import org.apache.commons.net.ftp.FTPFile;
+import org.springframework.integration.file.remote.InputStreamCallback;
+import org.springframework.integration.file.remote.RemoteFileTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,93 +77,67 @@ public class CopyTask extends FileTransferTask {
 
                 String downloadUrl = fromAdapter.getDownloadUrl(fromBucket, PathUtils.toLinuxPath(Paths.get(fromPath)), headerMap);
 
-                Headers headers = Headers.of(headerMap);
+                if (downloadUrl.equals("SFTP")) {
+                    new SFTPAdapter().connect(fromBucket, new SFTPAdapter.CollBack() {
+                        @Override
+                        public void collBack(Session session, ChannelSftp channelSftp) throws Exception {
+                            SftpATTRS attrs = channelSftp.lstat(fromPath);
+                            long totalSize = attrs.getSize();
 
-                Request request = new Request.Builder()
-                        .headers(headers)
-                        .url(downloadUrl)
-                        .build();
+                            OutputStream out = FileUtil.getOutputStream(targetPath);
 
-
-                OkHttpClient client = new OkHttpClient();
-                Response response = client.newCall(request).execute();
-
-                if (!response.isSuccessful()) {
-                    throw new IOException("Unexpected code " + response);
-                }
-
-                ResponseBody body = response.body();
-
-                // 获取文件总大小
-                long totalSize = body.contentLength();
-
-                InputStream in = body.byteStream();
-                OutputStream out = FileUtil.getOutputStream(targetPath);
-
-                byte[] buffer = new byte[1024 * 1024 * Integer.parseInt(taskBufferSize)];
-                int bytesRead;
-                long downloaded = 0;
-
-                long startTime = System.currentTimeMillis();
-
-
-                DecimalFormat df = new DecimalFormat("#.##");
-
-                long lastDownloaded = 0;
-
-                boolean released = false;
-                while ((bytesRead = in.read(buffer)) != -1) {
-
-                    if (tm.isPaused(taskId)) {
-                        if (!released) {
-                            tm.getSemaphore().release(); // 只释放一次
-                            released = true;
+                            loadData(channelSftp.get(headerMap.get("path")), out, tm, meta, totalSize);
                         }
+                    });
+                } else if (downloadUrl.startsWith("FTP")) {
+                    RemoteFileTemplate<FTPFile> remoteFileTemplate = FtpAdapter.getFtpRemoteFileTemplate(fromBucket);
 
-                        pauseLock.lock();
-                        try {
-                            while (tm.isPaused(taskId)) {
-                                unpaused.await(); // 挂起虚拟线程
+                    FTPFile[] files = remoteFileTemplate.list(headerMap.get("path"));
+
+                    long totalSize = files[0].getSize();
+                    OutputStream out = FileUtil.getOutputStream(targetPath);
+
+                    remoteFileTemplate.get(headerMap.get("path"), new InputStreamCallback() {
+                        @Override
+                        public void doWithInputStream(InputStream in) {
+                            try {
+                                loadData(in, out, tm, meta, totalSize);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
                             }
-                        } finally {
-                            pauseLock.unlock();
                         }
+                    });
+                    out.flush();
 
-                        if (released) {
-                            tm.getSemaphore().acquire(); // 恢复时重新占用名额
-                            released = false; // 重置
-                        }
+                } else {
+
+                    Headers headers = Headers.of(headerMap);
+
+                    Request request = new Request.Builder()
+                            .headers(headers)
+                            .url(downloadUrl)
+                            .build();
+
+
+                    OkHttpClient client = new OkHttpClient();
+                    Response response = client.newCall(request).execute();
+
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
                     }
 
+                    ResponseBody body = response.body();
 
-                    //任务取消
-                    if (cancelled) {
-                        return;
-                    }
+                    // 获取文件总大小
+                    long totalSize = body.contentLength();
 
-                    out.write(buffer, 0, bytesRead);
-                    downloaded += bytesRead;
+                    InputStream in = body.byteStream();
+                    OutputStream out = FileUtil.getOutputStream(targetPath);
 
-                    // 计算进度
-                    if (totalSize > 0) {
-                        double progress = (downloaded * 100.0 / totalSize);
-                        meta.setProgress(df.format(progress));
-                    }
+                    loadData(in, out, tm, meta, totalSize);
 
-                    // 计算速度（KB/s）
-                    long endTime = System.currentTimeMillis();
-                    double elapsed = (endTime - startTime) / 1000.0;
-                    if (elapsed > 1) {
-                        long downloadedSize = downloaded - lastDownloaded;
-                        double speed = downloadedSize / 1024.0 / elapsed;
-                        meta.setElapsed(df.format(speed));
-                        startTime = endTime;
-                        lastDownloaded = downloaded;
-                    }
                 }
 
-                out.flush();
-                in.close();
 
             }
 
@@ -210,5 +191,72 @@ public class CopyTask extends FileTransferTask {
 
             meta.setDescribe(describe + " (Success)");
         }
+    }
+
+    private void loadData(InputStream inputStream, OutputStream outputStream, TaskManager tm, TaskMeta meta, long totalSize) throws Exception {
+        byte[] buffer = new byte[1024 * 1024 * Integer.parseInt(taskBufferSize)];
+        int bytesRead;
+        long downloaded = 0;
+
+        long startTime = System.currentTimeMillis();
+
+
+        DecimalFormat df = new DecimalFormat("#.##");
+
+        long lastDownloaded = 0;
+
+        boolean released = false;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+
+            if (tm.isPaused(taskId)) {
+                if (!released) {
+                    tm.getSemaphore().release(); // 只释放一次
+                    released = true;
+                }
+
+                pauseLock.lock();
+                try {
+                    while (tm.isPaused(taskId)) {
+                        unpaused.await(); // 挂起虚拟线程
+                    }
+                } finally {
+                    pauseLock.unlock();
+                }
+
+                if (released) {
+                    tm.getSemaphore().acquire(); // 恢复时重新占用名额
+                    released = false; // 重置
+                }
+            }
+
+
+            //任务取消
+            if (cancelled) {
+                return;
+            }
+
+            outputStream.write(buffer, 0, bytesRead);
+            downloaded += bytesRead;
+
+            // 计算进度
+            if (totalSize > 0) {
+                double progress = (downloaded * 100.0 / totalSize);
+                meta.setProgress(df.format(progress));
+            }
+
+            // 计算速度（KB/s）
+            long endTime = System.currentTimeMillis();
+            double elapsed = (endTime - startTime) / 1000.0;
+            if (elapsed > 1) {
+                long downloadedSize = downloaded - lastDownloaded;
+                double speed = downloadedSize / 1024.0 / elapsed;
+                meta.setElapsed(df.format(speed));
+                startTime = endTime;
+                lastDownloaded = downloaded;
+            }
+        }
+
+        outputStream.flush();
+        inputStream.close();
     }
 }

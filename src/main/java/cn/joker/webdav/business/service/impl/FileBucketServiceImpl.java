@@ -7,6 +7,9 @@ import cn.joker.webdav.utils.SprintContextUtil;
 import cn.joker.webdav.webdav.adapter.contract.AdapterComponent;
 import cn.joker.webdav.webdav.adapter.contract.IFileAdapter;
 import cn.joker.webdav.webdav.adapter.contract.ParamAnnotation;
+import cn.joker.webdav.webdav.adapter.contract.ParamOption;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.cache.Cache;
@@ -51,17 +54,32 @@ public class FileBucketServiceImpl implements IFileBucketService {
             map.put("name", entry.getKey());
             map.put("title", annotation.title());
 
-            List<Map<String, String>> fieldList = new ArrayList<>();
+            List<Map<String, Object>> fieldList = new ArrayList<>();
 
             for (Field field : clazz.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(ParamAnnotation.class)){
+                if (!field.isAnnotationPresent(ParamAnnotation.class)) {
                     continue;
                 }
 
-                Map<String, String> fieldMap = new HashMap<>();
+                Map<String, Object> fieldMap = new HashMap<>();
                 fieldMap.put("name", field.getName());
-                ParamAnnotation  paramAnnotation = field.getAnnotation(ParamAnnotation.class);
+                ParamAnnotation paramAnnotation = field.getAnnotation(ParamAnnotation.class);
                 fieldMap.put("label", paramAnnotation.label());
+                fieldMap.put("type", paramAnnotation.type());
+
+
+                JSONArray jsonArray = new JSONArray();
+                ParamOption[] paramOptions = paramAnnotation.options();
+                for (ParamOption option : paramOptions) {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("key", option.key());
+                    jsonObject.put("label", option.key());
+                    jsonObject.put("value", option.value());
+                    jsonArray.add(jsonObject);
+                }
+
+                fieldMap.put("options", jsonArray);
+                fieldMap.put("required", paramAnnotation.required());
                 fieldList.add(fieldMap);
             }
             map.put("fields", fieldList);
@@ -123,11 +141,15 @@ public class FileBucketServiceImpl implements IFileBucketService {
     @Override
     public void updateFileBucketStatus(List<String> bucketList) {
         for (String s : bucketList) {
-            FileBucket fileBucket = keyValueService.findBusinessData("fileBucket", s, FileBucket.class);
-            IFileAdapter adapter = SprintContextUtil.getApplicationContext().getBean(fileBucket.getAdapter(), IFileAdapter.class);
-            String status = adapter.workStatus(fileBucket);
-            fileBucket.setStatus(status);
-            keyValueService.updateBusinessData("fileBucket", fileBucket, FileBucket.class);
+            try {
+                FileBucket fileBucket = keyValueService.findBusinessData("fileBucket", s, FileBucket.class);
+                IFileAdapter adapter = SprintContextUtil.getApplicationContext().getBean(fileBucket.getAdapter(), IFileAdapter.class);
+                String status = adapter.workStatus(fileBucket);
+                fileBucket.setStatus(status);
+                keyValueService.updateBusinessData("fileBucket", fileBucket, FileBucket.class);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 

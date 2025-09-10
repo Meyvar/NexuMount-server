@@ -21,6 +21,7 @@
     - [ ] [天翼云盘](https://cloud.189.cn)
     - [ ] [123云盘](https://www.123pan.com/)
     - [x] WebDav
+    - [x] FTP(S)/SFTP
     - [x] [百度网盘](http://pan.baidu.com/)
     - [ ] [夸克网盘](https://pan.quark.cn)
     - [ ] [迅雷网盘](https://pan.xunlei.com)

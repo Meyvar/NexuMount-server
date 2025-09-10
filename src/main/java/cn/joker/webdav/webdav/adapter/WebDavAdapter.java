@@ -50,24 +50,16 @@ import java.util.stream.Collectors;
 public class WebDavAdapter implements IFileAdapter {
 
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "服务器地址")
     private String url;
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "服务器端口号")
     private String prot;
 
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "用户名")
     private String username;
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "密码")
     private String password;
 

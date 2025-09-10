@@ -372,7 +372,7 @@ public class AdapterManager {
 
         HttpServletRequest request = RequestHolder.getRequest();
 
-        URI destUriObj = URI.create(toAdapterManager.uri);
+        URI destUriObj = URI.create(URLEncoder.encode(toAdapterManager.uri, StandardCharsets.UTF_8));
         String destPathRaw = destUriObj.getPath();
 
         boolean overwrite = !"F".equalsIgnoreCase(request.getHeader("Overwrite"));
