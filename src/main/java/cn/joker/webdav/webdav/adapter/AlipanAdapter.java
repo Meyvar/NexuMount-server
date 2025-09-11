@@ -59,13 +59,9 @@ import java.util.concurrent.TimeUnit;
 @AdapterComponent(title = "阿里网盘")
 public class AlipanAdapter implements IFileAdapter {
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "accessToken")
     private String accessToken;
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "refreshToken")
     private String refreshToken;
 
@@ -462,7 +458,6 @@ public class AlipanAdapter implements IFileAdapter {
                 .body(param.toJSONString())
                 .execute().body();
 
-        System.out.println(completeStr);
     }
 
     @Override

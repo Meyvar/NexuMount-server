@@ -2,6 +2,7 @@ package cn.joker.webdav.webdav.adapter.contract;
 
 import cn.joker.webdav.business.entity.FileBucket;
 import cn.joker.webdav.fileTask.UploadHook;
+import cn.joker.webdav.utils.PathUtils;
 import cn.joker.webdav.webdav.entity.FileResource;
 import cn.joker.webdav.webdav.entity.GetFileResource;
 
@@ -9,6 +10,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +23,21 @@ public interface IFileAdapter {
      * @param path 资源路径
      * @return
      */
-    boolean hasPath(FileBucket fileBucket, String path);
+    default boolean hasPath(FileBucket fileBucket, String path) {
+        if (path.equals("/")) {
+            return true;
+        }
+        try {
+            FileResource fileResource = getFolderItself(fileBucket, path);
+            if (fileResource != null) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+    }
 
 
     /**
@@ -29,7 +45,18 @@ public interface IFileAdapter {
      *
      * @return
      */
-    FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException;
+    default FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException{
+        String name = Paths.get(uri).getFileName().toString();
+
+        List<FileResource> list = propFind(fileBucket, PathUtils.toLinuxPath(Paths.get(uri).getParent()), false);
+
+        for (FileResource resource : list) {
+            if (name.equals(resource.getName())) {
+                return resource;
+            }
+        }
+        return null;
+    }
 
     /**
      * 文件列表
@@ -76,7 +103,7 @@ public interface IFileAdapter {
      * 移动资源
      *
      * @param fromFileBucket 文件桶
-     * @param fromPath 源路径
+     * @param fromPath       源路径
      */
     void move(FileBucket fromFileBucket, String fromPath, FileBucket toFileBucket, String toPath) throws IOException;
 
@@ -110,6 +137,7 @@ public interface IFileAdapter {
 
     /**
      * 刷新token
+     *
      * @param fileBucket
      */
     FileBucket refreshToken(FileBucket fileBucket);

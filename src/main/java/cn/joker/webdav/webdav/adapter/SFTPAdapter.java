@@ -45,37 +45,6 @@ public class SFTPAdapter implements IFileAdapter {
     private FilePathCacheService filePathCacheService;
 
     @Override
-    public boolean hasPath(FileBucket fileBucket, String path) {
-        if (path.equals("/")) {
-            return true;
-        }
-        try {
-            FileResource fileResource = getFolderItself(fileBucket, path);
-            if (fileResource != null) {
-                return true;
-            } else {
-                return false;
-            }
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    @Override
-    public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
-        String name = Paths.get(uri).getFileName().toString();
-
-        List<FileResource> list = propFind(fileBucket, PathUtils.toLinuxPath(Paths.get(uri).getParent()), false);
-
-        for (FileResource resource : list) {
-            if (name.equals(resource.getName())) {
-                return resource;
-            }
-        }
-        return null;
-    }
-
-    @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {
         List<FileResource> list = filePathCacheService.get(fileBucket.getUuid() + fileBucket.getPath() + uri);
 

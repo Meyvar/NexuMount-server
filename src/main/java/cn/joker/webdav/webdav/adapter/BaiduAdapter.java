@@ -48,24 +48,14 @@ import java.util.*;
 @AdapterComponent(title = "百度网盘")
 public class BaiduAdapter implements IFileAdapter {
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "accessToken")
     private String accessToken;
 
-    @Getter
-    @Setter
     @ParamAnnotation(label = "refreshToken")
     private String refreshToken;
 
     @Autowired
     private FilePathCacheService filePathCacheService;
-
-    @Autowired
-    private ISysSettingService sysSettingService;
-
-    @Autowired
-    private TaskManager taskManager;
 
     private final static String BASE_URL = "https://pan.baidu.com";
 

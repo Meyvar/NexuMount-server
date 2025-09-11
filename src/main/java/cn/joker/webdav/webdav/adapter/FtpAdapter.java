@@ -43,6 +43,7 @@ public class FtpAdapter implements IFileAdapter {
 
     @ParamAnnotation(label = "FTP类型", type = "el-select", options = {
             @ParamOption(key = "FTP", value = "ftp"),
+            @ParamOption(key = "FTPS", value = "ftps"),
     })
     private String ftpType;
 
@@ -68,36 +69,6 @@ public class FtpAdapter implements IFileAdapter {
     @Autowired
     private ISysSettingService sysSettingService;
 
-    @Override
-    public boolean hasPath(FileBucket fileBucket, String path) {
-        if (path.equals("/")) {
-            return true;
-        }
-        try {
-            FileResource fileResource = getFolderItself(fileBucket, path);
-            if (fileResource != null) {
-                return true;
-            } else {
-                return false;
-            }
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    @Override
-    public FileResource getFolderItself(FileBucket fileBucket, String uri) throws IOException {
-        String name = Paths.get(uri).getFileName().toString();
-
-        List<FileResource> list = propFind(fileBucket, PathUtils.toLinuxPath(Paths.get(uri).getParent()), false);
-
-        for (FileResource resource : list) {
-            if (name.equals(resource.getName())) {
-                return resource;
-            }
-        }
-        return null;
-    }
 
     @Override
     public List<FileResource> propFind(FileBucket fileBucket, String uri, boolean refresh) throws IOException {

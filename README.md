@@ -12,6 +12,12 @@
 
 ---
 
+## 文档
+
+-  [说明说明](https://meyvar.github.io/NexuMount-docs/)
+
+---
+
 ## 功能
 
 - [x] 多种存储
@@ -23,7 +29,7 @@
     - [x] WebDav
     - [x] FTP(S)/SFTP
     - [x] [百度网盘](http://pan.baidu.com/)
-    - [ ] [夸克网盘](https://pan.quark.cn)
+    - [x] [夸克网盘](https://pan.quark.cn)
     - [ ] [迅雷网盘](https://pan.xunlei.com)
     - [ ] [蓝奏云](https://www.lanzou.com/)
     - [ ] [115](https://115.com/)

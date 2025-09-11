@@ -48,14 +48,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
     @Autowired
     private FilePathCacheService filePathCacheService;
 
-    @Autowired
-    private TaskManager taskManager;
 
-    @Autowired
-    private ISysSettingService sysSettingService;
-
-    @Getter
-    @Setter
     @ParamAnnotation(label = "authorization")
     private String authorization;
 

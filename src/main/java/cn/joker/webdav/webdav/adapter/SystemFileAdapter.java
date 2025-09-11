@@ -35,12 +35,6 @@ import java.util.zip.ZipOutputStream;
 @AdapterComponent(title = "系统文件适配器")
 public class SystemFileAdapter implements IFileAdapter {
 
-    @Autowired
-    private TaskManager taskManager;
-
-    @Autowired
-    private ISysSettingService sysSettingService;
-
     @Override
     public boolean hasPath(FileBucket fileBucket, String path) {
         File file = new File(path);

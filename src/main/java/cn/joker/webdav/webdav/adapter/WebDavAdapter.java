@@ -66,12 +66,6 @@ public class WebDavAdapter implements IFileAdapter {
     @Autowired
     private FilePathCacheService filePathCacheService;
 
-    @Autowired
-    private ISysSettingService sysSettingService;
-
-    @Autowired
-    private TaskManager taskManager;
-
     private Sardine getSardine(FileBucket fileBucket) {
         JSONObject jsonObject = fileBucket.getFieldJson();
         String url = jsonObject.getString("url") + ":" + jsonObject.getString("prot");
