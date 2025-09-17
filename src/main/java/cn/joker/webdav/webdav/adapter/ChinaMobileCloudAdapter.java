@@ -771,7 +771,7 @@ public class ChinaMobileCloudAdapter implements IFileAdapter {
         void onProgress(long bytesWritten, long contentLength);
     }
 
-    private static class ProgressRequestBody extends RequestBody {
+    public static class ProgressRequestBody extends RequestBody {
 
         private final byte[] data;
         private final ProgressListener listener;

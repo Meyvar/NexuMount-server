@@ -683,16 +683,6 @@ public class AlipanAdapter implements IFileAdapter {
         }
     }
 
-    public static void main(String[] args) {
-        AlipanAdapter adapter = new AlipanAdapter();
-        FileBucket fileBucket = new FileBucket();
-        fileBucket.setFieldJson(new JSONObject());
-        fileBucket.getFieldJson().put("accessToken", "eyJraWQiOiJLcU8iLCJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmNjMwNGMwMWRhYTI0YTM4ODQ4MDNhMGI5YzdkZWQ3NSIsImF1ZCI6IjZiNWI1MmUxNDRmNzQ4Zjc4YjNmOTZhMjYyNmVkNWQ3IiwicyI6ImNkYSIsImQiOiIxMjc2OTg1LDkzNTU4NzE5MiIsImlzcyI6ImFsaXBhbiIsImV4cCI6MTc1NjUzMDk0NSwibCI6NCwiaWF0IjoxNzU2NTIzNzQyLCJqdGkiOiI5ODY0YTdhMGNiNGI0MWQzYWNlZTU4ZGUxZjM5ZTgwZiJ9.z25xhi4gfRMYTNtXfoF-g-hiY_6LnKcMBJblBDMTikc");
-        fileBucket.getFieldJson().put("refreshToken", "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJmNjMwNGMwMWRhYTI0YTM4ODQ4MDNhMGI5YzdkZWQ3NSIsImF1ZCI6IjZiNWI1MmUxNDRmNzQ4Zjc4YjNmOTZhMjYyNmVkNWQ3IiwiZXhwIjoxNzY0Mjk5NzQyLCJpYXQiOjE3NTY1MjM3NDIsImp0aSI6IjI0NzA1MjZjZjk4MzQ0ZDY4ZGQ3MWJmOGM5ZDAzNmRlIn0.rFgOoAxpoJf2hV60rt70Kn9kZeex8_t60hqOWRd3-K0aEnW8JxlMo0kUC4KIu0j7JpcnOiOKtLQyQ2A74tgaTw");
-
-        adapter.workStatus(fileBucket);
-    }
-
     @Override
     public FileBucket refreshToken(FileBucket fileBucket) {
         try {
