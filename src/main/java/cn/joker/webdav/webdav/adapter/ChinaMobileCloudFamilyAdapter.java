@@ -273,7 +273,11 @@ public class ChinaMobileCloudFamilyAdapter implements IFileAdapter {
         createParam.put("name", fileNAme);
         createParam.put("groupId", fileBucket.getFieldJson().getString("familyId"));
         createParam.put("groupType", 1);
-        createParam.put("parentFileId", fileResource.getId().replace("root:/", ""));
+        if (catalogType == 2) {
+            createParam.put("parentFileId", fileResource.getId().split("/")[2]);
+        } else {
+            createParam.put("parentFileId", fileResource.getId().replace("root:/", ""));
+        }
         createParam.put("seqNo", UUID.randomUUID().toString().replace("-", ""));
         createParam.put("size", tempFilePath.toFile().length());
 
@@ -493,7 +497,7 @@ public class ChinaMobileCloudFamilyAdapter implements IFileAdapter {
     @Override
     public void delete(FileBucket fileBucket, String path) throws IOException {
         if (path.equals("/家庭音乐（移动网盘系统自建）")) {
-            throw new RuntimeException("无法创建");
+            throw new RuntimeException("无法删除");
         }
 
         FileResource thiaFile = getFolderItself(fileBucket, path);

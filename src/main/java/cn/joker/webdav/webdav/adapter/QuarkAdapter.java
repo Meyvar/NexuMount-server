@@ -198,6 +198,28 @@ public class QuarkAdapter implements IFileAdapter {
 
         FileResource fileResource = getFolderItself(fileBucket, PathUtils.toLinuxPath(Paths.get(path).getParent()));
 
+        if (fileResource == null) {
+            String[] paths = path.split("/");
+            List<String> pathArr = new ArrayList<>();
+
+            for (String s : paths) {
+                if (!StringUtils.hasText(s) || s.equals(Paths.get(path).getFileName().toString())) {
+                    continue;
+                }
+                pathArr.add(s);
+                String tempPath = "/" + String.join("/", pathArr);
+                if (!hasPath(fileBucket, tempPath)) {
+                    synchronized (this) {
+                        if (!hasPath(fileBucket, tempPath)) {
+                            mkcol(fileBucket, tempPath);
+                            String tempParent = PathUtils.toLinuxPath(Paths.get(tempPath).getParent());
+                            filePathCacheService.remove(fileBucket.getUuid() + fileBucket.getPath() + tempParent);
+                        }
+                    }
+                }
+            }
+            fileResource = getFolderItself(fileBucket, PathUtils.toLinuxPath(Paths.get(path).getParent()));
+        }
 
         JSONObject resp = uploadPre(fileBucket, timestamp, tempFilePath.toFile(), userInfo, Paths.get(path).getFileName().toString(), md5, sha1, fileResource.getId());
 
