@@ -47,13 +47,17 @@ public class Task {
         List<FileBucket> list = fileBucketService.findAll();
 
         for (FileBucket fileBucket : list) {
-            IFileAdapter adapter = SprintContextUtil.getBean(fileBucket.getAdapter(), IFileAdapter.class);
-            FileBucket bucket = adapter.refreshToken(fileBucket);
-            if (bucket == null) {
-                continue;
+            try {
+                IFileAdapter adapter = SprintContextUtil.getBean(fileBucket.getAdapter(), IFileAdapter.class);
+                FileBucket bucket = adapter.refreshToken(fileBucket);
+                if (bucket == null) {
+                    continue;
+                }
+                fileBucket.setFieldJson(bucket.getFieldJson());
+                fileBucketService.save(fileBucket);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            fileBucket.setFieldJson(bucket.getFieldJson());
-            fileBucketService.save(fileBucket);
         }
     }
 }
